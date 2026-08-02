@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: kcn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: kcn
+      POSTGRES_PASSWORD: kcn_password
+      POSTGRES_DB: kcn_customer_management
+    ports:
+      - "55432:5432"
+    volumes:
+      - kcn_postgres_data:/var/lib/postgresql/data
+
+volumes:
+  kcn_postgres_data:

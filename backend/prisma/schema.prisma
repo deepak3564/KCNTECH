@@ -1,0 +1,245 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  EMPLOYEE
+}
+
+enum CustomerStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum ServiceStatus {
+  ACTIVE
+  INACTIVE
+  NA
+}
+
+enum PlanType {
+  CABLE
+  INTERNET
+}
+
+enum BillingStatus {
+  PENDING
+  PARTIAL
+  PAID
+}
+
+enum PaymentMode {
+  CASH
+  ADMIN_UPI
+  EMPLOYEE_UPI
+}
+
+enum BoxStatus {
+  ACTIVE
+  REPAIRED
+  REPLACED
+  RETURNED
+}
+
+model Organisation {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  users     User[]
+  plans     Plan[]
+  customers Customer[]
+  boxes     SetTopBox[]
+}
+
+model User {
+  id             String        @id @default(cuid())
+  organisationId String?
+  name           String
+  phone          String?
+  email          String        @unique
+  passwordHash   String
+  role           Role
+  mustChangePassword Boolean   @default(false)
+  isActive       Boolean       @default(true)
+  deleted        Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  organisation   Organisation? @relation(fields: [organisationId], references: [id])
+  customers      Customer[]    @relation("CollectorCustomers")
+  payments       Payment[]
+  handovers      EmployeeHandover[]
+  customerHistory CustomerHistory[]
+}
+
+model Plan {
+  id             String       @id @default(cuid())
+  organisationId String
+  name           String
+  type           PlanType
+  price          Int
+  isActive       Boolean      @default(true)
+  deleted        Boolean      @default(false)
+  organisation   Organisation @relation(fields: [organisationId], references: [id])
+  cableCustomers Customer[]    @relation("CablePlan")
+  internetCustomers Customer[] @relation("InternetPlan")
+}
+
+model Customer {
+  id             String         @id @default(cuid())
+  organisationId String
+  collectorId    String?
+  firstName      String
+  lastName       String?
+  phone          String?
+  address        String
+  status         CustomerStatus @default(ACTIVE)
+  cableStatus    ServiceStatus  @default(NA)
+  internetStatus ServiceStatus  @default(NA)
+  cablePlanId    String?
+  internetPlanId String?
+  cableStartMonth Int?
+  cableStartYear  Int?
+  internetStartMonth Int?
+  internetStartYear  Int?
+  notes          String?
+  deleted        Boolean        @default(false)
+  createdAt      DateTime       @default(now())
+  organisation   Organisation   @relation(fields: [organisationId], references: [id])
+  collector      User?          @relation("CollectorCustomers", fields: [collectorId], references: [id])
+  cablePlan      Plan?          @relation("CablePlan", fields: [cablePlanId], references: [id])
+  internetPlan   Plan?          @relation("InternetPlan", fields: [internetPlanId], references: [id])
+  boxes          CustomerBox[]
+  billings       MonthlyBilling[]
+  maintenance    MaintenanceCharge[]
+  requests       CustomerRequest[]
+  history        CustomerHistory[]
+  planHistory    CustomerPlanHistory[]
+}
+
+model CustomerPlanHistory {
+  id             String   @id @default(cuid())
+  organisationId String
+  customerId     String
+  month          Int
+  year           Int
+  cablePlanId    String?
+  cablePlanName  String?
+  cablePrice     Int      @default(0)
+  internetPlanId String?
+  internetPlanName String?
+  internetPrice  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  customer       Customer @relation(fields: [customerId], references: [id])
+
+  @@unique([customerId, month, year])
+}
+
+model CustomerHistory {
+  id             String   @id @default(cuid())
+  organisationId String
+  customerId     String
+  userId         String?
+  comment        String
+  createdAt      DateTime @default(now())
+  customer       Customer @relation(fields: [customerId], references: [id])
+  user           User?    @relation(fields: [userId], references: [id])
+}
+
+model SetTopBox {
+  id             String        @id @default(cuid())
+  organisationId String
+  boxNumber      String
+  pairedCardNumber String
+  status         BoxStatus     @default(ACTIVE)
+  notes          String?
+  deleted        Boolean       @default(false)
+  organisation   Organisation  @relation(fields: [organisationId], references: [id])
+  assignments    CustomerBox[]
+
+  @@unique([organisationId, boxNumber])
+  @@unique([organisationId, pairedCardNumber])
+}
+
+model CustomerBox {
+  id           String    @id @default(cuid())
+  customerId   String
+  setTopBoxId  String
+  assignedAt   DateTime  @default(now())
+  unassignedAt DateTime?
+  reason       String?
+  customer     Customer  @relation(fields: [customerId], references: [id])
+  setTopBox    SetTopBox @relation(fields: [setTopBoxId], references: [id])
+}
+
+model MonthlyBilling {
+  id             String        @id @default(cuid())
+  organisationId String
+  customerId     String
+  month          Int
+  year           Int
+  cableAmount    Int           @default(0)
+  internetAmount Int           @default(0)
+  maintenanceAmount Int        @default(0)
+  totalAmount    Int
+  paidAmount     Int           @default(0)
+  status         BillingStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  customer       Customer      @relation(fields: [customerId], references: [id])
+  payments       Payment[]
+
+  @@unique([customerId, month, year])
+}
+
+model Payment {
+  id             String        @id @default(cuid())
+  organisationId String
+  billingId      String
+  employeeId     String?
+  amount         Int
+  mode           PaymentMode
+  proofImageUrl  String?
+  paidAt         DateTime      @default(now())
+  note           String?
+  billing        MonthlyBilling @relation(fields: [billingId], references: [id])
+  employee       User?          @relation(fields: [employeeId], references: [id])
+}
+
+model MaintenanceCharge {
+  id          String   @id @default(cuid())
+  customerId  String
+  month       Int
+  year        Int
+  amount      Int
+  reason      String
+  createdAt   DateTime @default(now())
+  customer    Customer @relation(fields: [customerId], references: [id])
+}
+
+model EmployeeHandover {
+  id             String   @id @default(cuid())
+  organisationId String
+  employeeId     String
+  amount         Int
+  fromDate       DateTime
+  toDate         DateTime
+  note           String?
+  handedOverAt   DateTime @default(now())
+  employee       User     @relation(fields: [employeeId], references: [id])
+}
+
+model CustomerRequest {
+  id          String   @id @default(cuid())
+  customerId  String
+  title       String
+  details     String?
+  isResolved  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  customer    Customer @relation(fields: [customerId], references: [id])
+}

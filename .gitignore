@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+backend/node_modules/
+
+# Build output
+dist/
+frontend/dist/
+backend/dist/
+
+# Local environment files
+.env
+.env.local
+frontend/.env.local
+backend/.env
+
+# Uploaded local files
+backend/uploads/
+
+# Logs and system files
+*.log
+npm-debug.log*
+.DS_Store
+
+# Editor files
+.vscode/
+.idea/
+
+# Local Codex project metadata
+AGENTS.md
