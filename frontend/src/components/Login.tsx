@@ -4,8 +4,8 @@ import { api, saveSession, SessionUser } from "../api/client";
 import { useI18n } from "../i18n";
 
 export function Login({ onLogin }: { onLogin: (user: SessionUser) => void }) {
-  const [email, setEmail] = useState("admin@kcn.local");
-  const [password, setPassword] = useState("Admin@123");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const { t } = useI18n();
 
@@ -38,12 +38,6 @@ export function Login({ onLogin }: { onLogin: (user: SessionUser) => void }) {
           {error && <p className="error">{t(error)}</p>}
           <button className="primary">{t("Sign In")}</button>
         </form>
-        <div className="hint">
-          <strong>{t("Demo Logins")}</strong>
-          <span>Admin: admin@kcn.local / Admin@123</span>
-          <span>Employee: employee@kcn.local / Employee@123</span>
-          <span>Super Admin: superadmin@kcn.local / SuperAdmin@123</span>
-        </div>
       </section>
     </main>
   );

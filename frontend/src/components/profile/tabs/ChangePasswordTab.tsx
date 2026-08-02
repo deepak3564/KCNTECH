@@ -28,7 +28,7 @@ export function ChangePasswordTab({ user, onUserChange }: { user: SessionUser; o
 
   return (
     <section className="profile-tab-panel">
-      {user.mustChangePassword && <p className="profile-alert">{t("Please Change Your Default Password.")}</p>}
+      {user.mustChangePassword && <p className="profile-alert">{t("Please Change Your Temporary Password.")}</p>}
       <form className="stack" onSubmit={submit}>
         <label>{t("Current Password")}<input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /></label>
         <label>{t("New Password")}<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></label>

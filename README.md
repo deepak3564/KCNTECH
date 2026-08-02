@@ -94,20 +94,22 @@ npm run dev:frontend
 http://localhost:5173
 ```
 
-## Demo Logins
+## Production Super Admin
+
+This production branch does not include demo login credentials.
+
+To create or reset the first super admin, set these backend environment variables before running the seed command:
 
 ```text
-Super Admin
-Email: superadmin@kcn.local
-Password: SuperAdmin@123
+SEED_SUPER_ADMIN_EMAIL="your-email@example.com"
+SEED_SUPER_ADMIN_PASSWORD="your-secure-password"
+SEED_SUPER_ADMIN_NAME="Your Name"
+```
 
-Organisation Admin
-Email: admin@kcn.local
-Password: Admin@123
+Then run:
 
-Employee
-Email: employee@kcn.local
-Password: Employee@123
+```bash
+npm run db:seed --prefix backend
 ```
 
 ## Production Deployment
