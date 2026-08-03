@@ -57,7 +57,7 @@ cp backend/.env.example backend/.env
 6. For local Docker database, set `backend/.env` like this:
 
 ```bash
-DATABASE_URL="postgresql://kcn:kcn_password@127.0.0.1:55432/kcn_customer_management"
+DATABASE_URL="postgresql://db:db_password@127.0.0.1:55432/app_name"
 JWT_SECRET="replace-with-a-long-random-secret"
 PORT=4000
 CORS_ORIGIN="http://localhost:5173"
