@@ -28,7 +28,7 @@ adminRouter.post("/employees", async (req, res) => {
       name: z.string().min(2),
       email: z.string().email(),
       phone: z.string().optional(),
-      password: z.string().min(8).optional()
+      password: z.string().min(8)
     })
     .parse(req.body);
   const employee = await prisma.user.create({
@@ -38,7 +38,7 @@ adminRouter.post("/employees", async (req, res) => {
       email: body.email,
       phone: body.phone,
       role: Role.EMPLOYEE,
-      passwordHash: await hashPassword(body.password ?? "Employee@123"),
+      passwordHash: await hashPassword(body.password),
       mustChangePassword: true
     },
     select: { id: true, name: true, email: true, phone: true, isActive: true }

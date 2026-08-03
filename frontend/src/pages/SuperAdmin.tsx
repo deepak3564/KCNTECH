@@ -31,7 +31,7 @@ export function SuperAdmin({ user, onLogout, onUserChange }: { user: SessionUser
             {Object.keys(values).map((key) => <label key={key}>{t(labelFor(key))}<input type={key.toLowerCase().includes("password") ? "password" : "text"} value={(values as any)[key]} onChange={(e) => setValues({ ...values, [key]: e.target.value })} /></label>)}
             <button className="primary">{t("Create Org Admin")}</button>
           </form>
-          <p className="hint">{t("If Admin Password Is Blank, The Default Password Is Admin@123.")}</p>
+          <p className="hint">{t("Admin Password Is Required And Must Be At Least 8 Characters.")}</p>
         </section>
         <section className="customer-list">
           {orgs.map((org) => {

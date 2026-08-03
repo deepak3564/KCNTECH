@@ -24,7 +24,7 @@ superAdminRouter.post("/organisations", async (req, res) => {
       adminName: z.string().min(2),
       adminEmail: z.string().email(),
       adminPhone: z.string().optional(),
-      adminPassword: z.string().min(8).optional()
+      adminPassword: z.string().min(8)
     })
     .parse(req.body);
 
@@ -37,7 +37,7 @@ superAdminRouter.post("/organisations", async (req, res) => {
           email: body.adminEmail,
           phone: body.adminPhone,
           role: Role.ADMIN,
-          passwordHash: await hashPassword(body.adminPassword ?? "Admin@123"),
+          passwordHash: await hashPassword(body.adminPassword),
           mustChangePassword: true
         }
       }
