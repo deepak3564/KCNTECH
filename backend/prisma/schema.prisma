@@ -67,6 +67,7 @@ model User {
   passwordHash   String
   role           Role
   mustChangePassword Boolean   @default(false)
+  preferredLanguage String     @default("en")
   isActive       Boolean       @default(true)
   deleted        Boolean       @default(false)
   createdAt      DateTime      @default(now())

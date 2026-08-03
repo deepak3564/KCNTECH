@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS "User" (
   "passwordHash" TEXT NOT NULL,
   "role" "Role" NOT NULL,
   "mustChangePassword" BOOLEAN NOT NULL DEFAULT false,
+  "preferredLanguage" TEXT NOT NULL DEFAULT 'en',
   "isActive" BOOLEAN NOT NULL DEFAULT true,
   "deleted" BOOLEAN NOT NULL DEFAULT false,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP

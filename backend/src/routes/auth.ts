@@ -16,15 +16,7 @@ authRouter.post("/login", async (req, res) => {
 
   return res.json({
     token: signToken(user),
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      organisationId: user.organisationId,
-      organisationName: user.organisation?.name ?? "Platform",
-      mustChangePassword: user.mustChangePassword
-    }
+    user: sessionUser(user)
   });
 });
 
@@ -35,15 +27,18 @@ authRouter.get("/me", requireAuth, async (req, res) => {
   });
   if (!user) return res.status(404).json({ message: "User not found." });
 
-  return res.json({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    role: user.role,
-    organisationId: user.organisationId,
-    organisationName: user.organisation?.name ?? "Platform",
-    mustChangePassword: user.mustChangePassword
+  return res.json(sessionUser(user));
+});
+
+authRouter.put("/language", requireAuth, async (req, res) => {
+  const body = z.object({ preferredLanguage: z.enum(["en", "mr"]) }).parse(req.body);
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { preferredLanguage: body.preferredLanguage },
+    include: { organisation: true }
   });
+
+  return res.json(sessionUser(user));
 });
 
 authRouter.post("/change-password", requireAuth, async (req, res) => {
@@ -60,3 +55,25 @@ authRouter.post("/change-password", requireAuth, async (req, res) => {
 
   return res.json({ message: "Password changed successfully." });
 });
+
+function sessionUser(user: {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  organisationId: string | null;
+  organisation?: { name: string } | null;
+  mustChangePassword: boolean;
+  preferredLanguage?: string | null;
+}) {
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
+    organisationId: user.organisationId,
+    organisationName: user.organisation?.name ?? "Platform",
+    mustChangePassword: user.mustChangePassword,
+    preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en"
+  };
+}

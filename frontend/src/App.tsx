@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { clearSession, getSavedUser, SessionUser } from "./api/client";
 import { AppErrorAlert } from "./components/AppErrorAlert";
 import { Login } from "./components/Login";
+import { useI18n } from "./i18n";
 import { SuperAdmin } from "./pages/SuperAdmin";
 import { Workspace } from "./pages/Workspace";
 
 export function App() {
   const [user, setUser] = useState<SessionUser | null>(getSavedUser());
+  const { setLanguage } = useI18n();
+
+  useEffect(() => {
+    setLanguage(user?.preferredLanguage ?? "en");
+  }, [setLanguage, user?.preferredLanguage]);
 
   return (
     <>

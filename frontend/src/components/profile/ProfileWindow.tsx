@@ -43,7 +43,7 @@ export function ProfileWindow({
           <div className="profile-content">
             {tab === "about" && <AboutTab user={user} />}
             {tab === "password" && <ChangePasswordTab user={user} onUserChange={onUserChange} />}
-            {tab === "language" && <LanguageTab />}
+            {tab === "language" && <LanguageTab user={user} onUserChange={onUserChange} />}
             {tab === "logout" && <LogoutTab onLogout={onLogout} />}
           </div>
         </div>

@@ -9,6 +9,7 @@ export type SessionUser = {
   organisationId: string | null;
   organisationName: string;
   mustChangePassword: boolean;
+  preferredLanguage: "en" | "mr";
 };
 
 export function getToken() {
@@ -22,7 +23,9 @@ export function saveSession(token: string, user: SessionUser) {
 
 export function getSavedUser(): SessionUser | null {
   const raw = localStorage.getItem("kcn_user");
-  return raw ? JSON.parse(raw) : null;
+  if (!raw) return null;
+  const user = JSON.parse(raw) as SessionUser;
+  return { ...user, preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en" };
 }
 
 export function clearSession() {

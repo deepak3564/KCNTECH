@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useMemo, useState } from "react";
+import React, { createContext, useCallback, useContext, useMemo, useState } from "react";
 
 export type Language = "en" | "mr";
 
@@ -64,6 +64,7 @@ const dictionary: Record<string, string> = {
   "Could Not Sign In": "साइन इन करता आले नाही",
   "Could Not Update Customer": "ग्राहक अपडेट करता आला नाही",
   "Could Not Update Customer Status": "ग्राहक स्थिती अपडेट करता आली नाही",
+  "Could Not Update Language": "भाषा अपडेट करता आली नाही",
   "Could Not Delete Customer": "ग्राहक डिलीट करता आला नाही",
   "Could Not Delete Record": "नोंद डिलीट करता आली नाही",
   "Create Org Admin": "संस्था अॅडमिन तयार करा",
@@ -244,15 +245,11 @@ const dictionary: Record<string, string> = {
 const I18nContext = createContext<I18nContextValue | null>(null);
 
 export function I18nProvider({ children }: { children: React.ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(() => {
-    const saved = localStorage.getItem("kcn_language");
-    return saved === "mr" ? "mr" : "en";
-  });
+  const [language, setLanguageState] = useState<Language>("en");
 
-  function setLanguage(nextLanguage: Language) {
-    localStorage.setItem("kcn_language", nextLanguage);
+  const setLanguage = useCallback((nextLanguage: Language) => {
     setLanguageState(nextLanguage);
-  }
+  }, []);
 
   const value = useMemo<I18nContextValue>(() => ({
     language,
