@@ -47,6 +47,7 @@
 body { margin: 0; }
 button, input, select { font: inherit; }
 button { cursor: pointer; }
+label, input, select, button { min-width: 0; }
 
 .login-screen {
   min-height: 100vh;
@@ -89,6 +90,7 @@ label { display: grid; gap: 5px; font-size: 0.82rem; font-weight: 700; color: #4
 input, select {
   min-height: 42px;
   width: 100%;
+  max-width: 100%;
   border: 1px solid #ccd8d5;
   border-radius: 8px;
   background: #fff;
@@ -1175,6 +1177,9 @@ h3,
   .content { padding: 12px; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
   .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
+  .period-row, .tool-row, .inline-form, .grid-form, .ledger-row, .payment-report-filters, .advance-period-row, .customer-edit-form, .add-form-fields { width: 100%; overflow: hidden; }
+  .period-row > *, .tool-row > *, .inline-form > *, .grid-form > *, .ledger-row > *, .payment-report-filters > *, .advance-period-row > *, .customer-edit-form > *, .add-form-fields > * { min-width: 0; width: 100%; }
+  input[type="date"], input[type="number"], select { width: 100%; max-width: 100%; }
   .form-heading { grid-column: auto; }
   .customer-card { align-items: start; display: grid; gap: 12px; }
   .master-row { align-items: start; }
