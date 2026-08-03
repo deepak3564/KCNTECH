@@ -41,6 +41,17 @@ authRouter.put("/language", requireAuth, async (req, res) => {
   return res.json(sessionUser(user));
 });
 
+authRouter.put("/theme", requireAuth, async (req, res) => {
+  const body = z.object({ preferredTheme: z.enum(["professional", "brand", "light", "dark"]) }).parse(req.body);
+  const user = await prisma.user.update({
+    where: { id: req.user!.id },
+    data: { preferredTheme: body.preferredTheme },
+    include: { organisation: true }
+  });
+
+  return res.json(sessionUser(user));
+});
+
 authRouter.post("/change-password", requireAuth, async (req, res) => {
   const body = z.object({ currentPassword: z.string(), newPassword: z.string().min(8) }).parse(req.body);
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
@@ -65,7 +76,10 @@ function sessionUser(user: {
   organisation?: { name: string } | null;
   mustChangePassword: boolean;
   preferredLanguage?: string | null;
+  preferredTheme?: string | null;
 }) {
+  const preferredTheme = ["brand", "light", "dark"].includes(user.preferredTheme ?? "") ? user.preferredTheme : "professional";
+
   return {
     id: user.id,
     name: user.name,
@@ -74,6 +88,7 @@ function sessionUser(user: {
     organisationId: user.organisationId,
     organisationName: user.organisation?.name ?? "Platform",
     mustChangePassword: user.mustChangePassword,
-    preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en"
+    preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en",
+    preferredTheme
   };
 }

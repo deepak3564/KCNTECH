@@ -68,6 +68,7 @@ model User {
   role           Role
   mustChangePassword Boolean   @default(false)
   preferredLanguage String     @default("en")
+  preferredTheme String        @default("professional")
   isActive       Boolean       @default(true)
   deleted        Boolean       @default(false)
   createdAt      DateTime      @default(now())

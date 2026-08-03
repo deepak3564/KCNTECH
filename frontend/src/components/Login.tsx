@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Cable } from "lucide-react";
 import { api, saveSession, SessionUser } from "../api/client";
 import { useI18n } from "../i18n";
 
@@ -27,10 +26,10 @@ export function Login({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   return (
     <main className="login-screen">
       <section className="login-panel">
-        <div>
-          <span className="brand-mark"><Cable size={26} /></span>
+        <div className="login-brand">
+          <img className="login-logo" src="/kcn-tech-logo.png" alt="KCN Tech" />
           <h1>{t("KCN Customer Management")}</h1>
-          <p>{t("Organisation Sign In")}</p>
+          <p>{t("Sign In")}</p>
         </div>
         <form onSubmit={submit} className="stack">
           <label>{t("Email")}<input value={email} onChange={(e) => setEmail(e.target.value)} /></label>
