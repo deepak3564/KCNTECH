@@ -1,5 +1,6 @@
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
+let pendingApiRequests = 0;
 
 export type SessionUser = {
   id: string;
@@ -10,6 +11,7 @@ export type SessionUser = {
   organisationName: string;
   mustChangePassword: boolean;
   preferredLanguage: "en" | "mr";
+  preferredTheme: "professional" | "brand" | "light" | "dark";
 };
 
 export function getToken() {
@@ -25,7 +27,8 @@ export function getSavedUser(): SessionUser | null {
   const raw = localStorage.getItem("kcn_user");
   if (!raw) return null;
   const user = JSON.parse(raw) as SessionUser;
-  return { ...user, preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en" };
+  const preferredTheme = ["brand", "light", "dark"].includes(user.preferredTheme) ? user.preferredTheme : "professional";
+  return { ...user, preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en", preferredTheme };
 }
 
 export function clearSession() {
@@ -39,18 +42,37 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  const response = await fetch(`${API_URL}${path}`, { ...options, headers }).catch(() => {
-    const message = "Cannot Connect To Server. Please Check That Backend Is Running.";
-    window.dispatchEvent(new CustomEvent("app-error", { detail: { message } }));
-    throw new Error(message);
-  });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const message = readableErrorMessage(data);
-    window.dispatchEvent(new CustomEvent("app-error", { detail: { message } }));
-    throw new Error(message);
+  beginApiRequest();
+  try {
+    const response = await fetch(`${API_URL}${path}`, { ...options, headers }).catch(() => {
+      const message = "Cannot Connect To Server. Please Check That Backend Is Running.";
+      window.dispatchEvent(new CustomEvent("app-error", { detail: { message } }));
+      throw new Error(message);
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const message = readableErrorMessage(data);
+      window.dispatchEvent(new CustomEvent("app-error", { detail: { message } }));
+      throw new Error(message);
+    }
+    return data as T;
+  } finally {
+    endApiRequest();
   }
-  return data as T;
+}
+
+function beginApiRequest() {
+  pendingApiRequests += 1;
+  emitApiLoading();
+}
+
+function endApiRequest() {
+  pendingApiRequests = Math.max(0, pendingApiRequests - 1);
+  emitApiLoading();
+}
+
+function emitApiLoading() {
+  window.dispatchEvent(new CustomEvent("api-loading", { detail: { isLoading: pendingApiRequests > 0 } }));
 }
 
 function readableErrorMessage(data: unknown) {

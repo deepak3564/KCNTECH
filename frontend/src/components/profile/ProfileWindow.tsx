@@ -5,9 +5,10 @@ import { AboutTab } from "./tabs/AboutTab";
 import { ChangePasswordTab } from "./tabs/ChangePasswordTab";
 import { LanguageTab } from "./tabs/LanguageTab";
 import { LogoutTab } from "./tabs/LogoutTab";
+import { ThemeTab } from "./tabs/ThemeTab";
 import { useI18n } from "../../i18n";
 
-type ProfileTab = "about" | "password" | "language" | "logout";
+type ProfileTab = "about" | "password" | "language" | "theme" | "logout";
 
 export function ProfileWindow({
   user,
@@ -38,12 +39,14 @@ export function ProfileWindow({
             <button className={tab === "about" ? "active-tab" : ""} onClick={() => setTab("about")}>{t("About")}</button>
             <button className={tab === "password" ? "active-tab" : ""} onClick={() => setTab("password")}>{t("Change Password")}</button>
             <button className={tab === "language" ? "active-tab" : ""} onClick={() => setTab("language")}>{t("Language")}</button>
+            <button className={tab === "theme" ? "active-tab" : ""} onClick={() => setTab("theme")}>{t("Theme")}</button>
             <button className={tab === "logout" ? "active-tab" : ""} onClick={() => setTab("logout")}>{t("Logout")}</button>
           </nav>
           <div className="profile-content">
             {tab === "about" && <AboutTab user={user} />}
             {tab === "password" && <ChangePasswordTab user={user} onUserChange={onUserChange} />}
             {tab === "language" && <LanguageTab user={user} onUserChange={onUserChange} />}
+            {tab === "theme" && <ThemeTab user={user} onUserChange={onUserChange} />}
             {tab === "logout" && <LogoutTab onLogout={onLogout} />}
           </div>
         </div>
