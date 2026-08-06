@@ -96,6 +96,7 @@ model Customer {
   id             String         @id @default(cuid())
   organisationId String
   collectorId    String?
+  customerCode   String?
   firstName      String
   lastName       String?
   phone          String?
@@ -122,6 +123,8 @@ model Customer {
   requests       CustomerRequest[]
   history        CustomerHistory[]
   planHistory    CustomerPlanHistory[]
+
+  @@unique([organisationId, customerCode])
 }
 
 model CustomerPlanHistory {

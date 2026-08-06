@@ -35,6 +35,9 @@ export function CustomerDrawer({
   const [mode, setMode] = useState("CASH");
   const [proof, setProof] = useState<File | null>(null);
   const [paymentError, setPaymentError] = useState("");
+  const [employeeCablePlanId, setEmployeeCablePlanId] = useState(customer.cablePlanId ?? "");
+  const [employeeCablePlanMessage, setEmployeeCablePlanMessage] = useState("");
+  const [employeeCablePlanError, setEmployeeCablePlanError] = useState("");
   const [advanceOpen, setAdvanceOpen] = useState(false);
   const [advanceMonth, setAdvanceMonth] = useState(month);
   const [advanceYear, setAdvanceYear] = useState(year);
@@ -45,6 +48,7 @@ export function CustomerDrawer({
   const [advanceProof, setAdvanceProof] = useState<File | null>(null);
   const [advanceError, setAdvanceError] = useState("");
   const { t } = useI18n();
+  const cablePlanOptions = plans.filter((plan) => plan.type === "CABLE" && plan.isActive !== false);
 
   async function collect(event: React.FormEvent) {
     event.preventDefault();
@@ -63,6 +67,23 @@ export function CustomerDrawer({
     await api("/payments", { method: "POST", body: form });
     await onRefresh();
     onClose();
+  }
+
+  async function updateEmployeeCablePlan(event: React.FormEvent) {
+    event.preventDefault();
+    setEmployeeCablePlanMessage("");
+    setEmployeeCablePlanError("");
+    if (!employeeCablePlanId) return;
+    try {
+      await api(`/customers/${customer.id}/cable-plan`, {
+        method: "PUT",
+        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month, year })
+      });
+      setEmployeeCablePlanMessage("Cable Plan Updated.");
+      await onRefresh();
+    } catch (err) {
+      setEmployeeCablePlanError(err instanceof Error ? err.message : "Could Not Update Cable Plan");
+    }
   }
 
   async function loadAdvanceBill() {
@@ -119,6 +140,7 @@ export function CustomerDrawer({
       </header>
       <div className="detail-grid">
         <span>{t("Phone")}<strong>{customer.phone ?? "NA"}</strong></span>
+        <span>{t("Customer ID")}<strong>{customer.customerCode ?? "NA"}</strong></span>
         <span>{t("Cable")}<strong>{customer.cablePlan ? `${customer.cablePlan.name} · ${money(customer.cablePlan.price)}` : "NA"}</strong></span>
         <span>{t("Cable Start Month")}<strong>{formatStartMonth(customer.cableStartMonth, customer.cableStartYear)}</strong></span>
         <span>{t("Internet")}<strong>{customer.internetPlan ? `${customer.internetPlan.name} · ${money(customer.internetPlan.price)}` : "NA"}</strong></span>
@@ -129,6 +151,21 @@ export function CustomerDrawer({
       </div>
       <CustomerHistoryPanel customerId={customer.id} />
       <CustomerPlanHistoryPanel customerId={customer.id} />
+      {user.role === "EMPLOYEE" && customer.cableStatus !== "NA" && (
+        <form className="payment-form" onSubmit={updateEmployeeCablePlan}>
+          <h3>{t("Update Cable Plan")}</h3>
+          <label>
+            {t("Cable Plan")}
+            <select value={employeeCablePlanId} onChange={(event) => setEmployeeCablePlanId(event.target.value)}>
+              <option value="">NA</option>
+              {cablePlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}
+            </select>
+          </label>
+          <button className="primary" disabled={!employeeCablePlanId}>{t("Save")}</button>
+          {employeeCablePlanMessage && <p className="success">{t(employeeCablePlanMessage)}</p>}
+          {employeeCablePlanError && <p className="error inline-error">{t(employeeCablePlanError)}</p>}
+        </form>
+      )}
       {bill && (
         <form className="payment-form" onSubmit={collect}>
           <h3>{t("Accept Payment")}</h3>
@@ -235,6 +272,7 @@ function AdminCustomerActions({
     return (box.status ?? "ACTIVE") === "ACTIVE" && (!linkedCustomerId || box.id === currentBoxId);
   });
   const [values, setValues] = useState({
+    customerCode: customer.customerCode ?? "",
     firstName: customer.firstName,
     lastName: customer.lastName ?? "",
     phone: customer.phone ?? "",
@@ -268,6 +306,7 @@ function AdminCustomerActions({
     setError("");
     const payload = {
       ...values,
+      customerCode: values.customerCode.trim() || null,
       lastName: values.lastName.trim() || null,
       phone: values.phone.trim() || null,
       collectorId: values.collectorId || null,
@@ -313,6 +352,7 @@ function AdminCustomerActions({
       {error && <p className="error inline-error">{t(error)}</p>}
       {editing && (
         <form className="customer-edit-form" onSubmit={save}>
+          <label>{t("Customer ID")}<input value={values.customerCode} onChange={(e) => setValues({ ...values, customerCode: e.target.value })} /></label>
           <label>{t("First Name")}<input value={values.firstName} onChange={(e) => setValues({ ...values, firstName: e.target.value })} /></label>
           <label>{t("Last Name")}<input value={values.lastName} onChange={(e) => setValues({ ...values, lastName: e.target.value })} /></label>
           <label>{t("Phone")}<input value={values.phone} onChange={(e) => setValues({ ...values, phone: e.target.value })} /></label>
