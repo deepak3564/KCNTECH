@@ -8,8 +8,7 @@ export function CustomerCard({ customer, onOpen }: { customer: Customer; onOpen:
   return (
     <button className="customer-card" onClick={onOpen}>
       <div>
-        <strong>{customer.firstName} {customer.lastName}</strong>
-        {customer.customerCode && <span>{t("Customer ID")}: {customer.customerCode}</span>}
+        <strong>{customer.customerCode ? `${customer.customerCode} - ` : ""}{customer.firstName} {customer.lastName}</strong>
         <span>{customer.address}</span>
         <span>{t("Collector")}: {customer.collector?.name ?? t("Not Assigned")}</span>
       </div>
