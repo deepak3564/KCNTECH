@@ -15,6 +15,7 @@ export type Customer = {
   collectorId?: string | null;
   cablePlanId?: string | null;
   internetPlanId?: string | null;
+  customerCode?: string | null;
   firstName: string;
   lastName?: string;
   phone?: string;

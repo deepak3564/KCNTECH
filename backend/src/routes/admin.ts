@@ -178,6 +178,7 @@ adminRouter.post("/customers", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z
     .object({
+      customerCode: z.string().optional().nullable(),
       firstName: z.string().min(1),
       lastName: z.string().optional(),
       phone: z.string().optional(),
@@ -208,6 +209,7 @@ adminRouter.post("/customers", async (req, res) => {
   const customer = await prisma.customer.create({
     data: {
       organisationId,
+      customerCode: body.customerCode?.trim() || null,
       firstName: body.firstName,
       lastName: body.lastName,
       phone: body.phone,
@@ -246,6 +248,7 @@ adminRouter.put("/customers/:id", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z
     .object({
+      customerCode: z.string().optional().nullable(),
       firstName: z.string().min(1).optional(),
       lastName: z.string().nullable().optional(),
       phone: z.string().nullable().optional(),
