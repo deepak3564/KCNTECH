@@ -99,6 +99,7 @@ function CustomerForm({ plans, employees, boxes, month, year, onCancel, done }: 
         <strong>{t("Add Customer")}</strong>
       </div>
       <div className="add-form-fields">
+        <label>{t("Customer ID")}<input onChange={(e) => set("customerCode", e.target.value)} /></label>
         <label>{t("First Name")}<input onChange={(e) => set("firstName", e.target.value)} /></label>
         <label>{t("Last Name")}<input onChange={(e) => set("lastName", e.target.value)} /></label>
         <label>{t("Phone")}<input onChange={(e) => set("phone", e.target.value)} /></label>

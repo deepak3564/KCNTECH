@@ -17,6 +17,13 @@ backend/.env
 # Uploaded local files
 backend/uploads/
 
+# Local imports and generated exports
+exports/
+outputs/
+spreadsheet-work/
+backend/prisma/*-data.json
+backend/prisma/import-*.ts
+
 # Logs and system files
 *.log
 npm-debug.log*
