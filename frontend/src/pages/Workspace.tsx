@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ReceiptIndianRupee, Search } from "lucide-react";
 import { api, SessionUser } from "../api/client";
 import { Box, Customer, Dashboard, Employee, Plan } from "../types";
@@ -23,9 +23,12 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [query, setQuery] = useState("");
+  const [suggestions, setSuggestions] = useState<Customer[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("");
   const [billingMessage, setBillingMessage] = useState("");
   const [generatingBills, setGeneratingBills] = useState(false);
+  const searchRequestId = useRef(0);
   const { t } = useI18n();
 
   async function load() {
@@ -51,6 +54,41 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
 
   useEffect(() => { load().catch(console.error); }, [month, year, paymentStatus]);
 
+  useEffect(() => {
+    const searchText = query.trim();
+    const requestId = searchRequestId.current + 1;
+    searchRequestId.current = requestId;
+    if (!searchText) {
+      setSuggestions([]);
+      setSearchOpen(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      const params = new URLSearchParams({
+        month: String(month),
+        year: String(year),
+        q: searchText,
+        ...(paymentStatus ? { paymentStatus } : {})
+      });
+      try {
+        const list = await api<Customer[]>(`/customers?${params.toString()}`, { showLoading: false });
+        if (searchRequestId.current !== requestId) return;
+        setCustomers(list);
+        setSuggestions(list.slice(0, 12));
+        setSearchOpen(true);
+      } catch (error) {
+        if (searchRequestId.current === requestId) {
+          setSuggestions([]);
+          setSearchOpen(false);
+        }
+        console.error(error);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [query, month, year, paymentStatus]);
+
   async function generateBills() {
     setBillingMessage("");
     setGeneratingBills(true);
@@ -61,6 +99,15 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     } finally {
       setGeneratingBills(false);
     }
+  }
+
+  async function clearSearch() {
+    setQuery("");
+    setSuggestions([]);
+    setSearchOpen(false);
+    const params = new URLSearchParams({ month: String(month), year: String(year), ...(paymentStatus ? { paymentStatus } : {}) });
+    const list = await api<Customer[]>(`/customers?${params.toString()}`, { showLoading: false });
+    setCustomers(list);
   }
 
   return (
@@ -74,7 +121,28 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
         {billingMessage && <p className="success notice">{t(billingMessage)}</p>}
         {dashboard && <DashboardCards dashboard={dashboard} />}
         <section className="tool-row">
-          <label className="search"><Search size={16} /><input placeholder={t("Search Name, Phone, STB, Card")} value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /></label>
+          <div className="search-wrap">
+            <label className="search"><Search size={16} /><input placeholder={t("Search Customer ID, Name, STB, Card")} value={query} onFocus={() => query.trim() && setSearchOpen(true)} onBlur={() => window.setTimeout(() => setSearchOpen(false), 120)} onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /></label>
+            {query && <button className="search-clear" type="button" onClick={clearSearch}>{t("Clear")}</button>}
+            {searchOpen && suggestions.length > 0 && (
+              <div className="customer-suggestions">
+                {suggestions.map((customer) => (
+                  <button
+                    key={customer.id}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      setQuery(customerSearchValue(customer));
+                      setCustomers([customer]);
+                      setSearchOpen(false);
+                    }}
+                  >
+                    {customerSearchLabel(customer)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={load}><Search size={16} /> {t("Search")}</button>
           <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
             <option value="">{t("All Payment")}</option><option value="PENDING">{t("Pending")}</option><option value="PARTIAL">{t("Partial")}</option><option value="PAID">{t("Paid")}</option>
@@ -91,4 +159,14 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
       {selected && <CustomerDrawer customer={selected} user={user} plans={plans} employees={employees} boxes={boxes} month={month} year={year} onClose={() => setSelected(null)} onRefresh={load} />}
     </Shell>
   );
+}
+
+function customerSearchLabel(customer: Customer) {
+  const name = `${customer.firstName} ${customer.lastName ?? ""}`.trim();
+  return `${customer.customerCode ?? customer.id} - ${name} - ${customer.address}`;
+}
+
+function customerSearchValue(customer: Customer) {
+  const name = `${customer.firstName} ${customer.lastName ?? ""}`.trim();
+  return customer.customerCode ?? name;
 }
