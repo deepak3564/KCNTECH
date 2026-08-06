@@ -10,6 +10,20 @@ import { organisationScope, requireAuth, requireRole } from "../middleware/auth.
 export const customersRouter = Router();
 customersRouter.use(requireAuth, requireRole(Role.ADMIN, Role.EMPLOYEE));
 
+customersRouter.get("/cable-plans", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const plans = await prisma.plan.findMany({
+    where: {
+      organisationId,
+      type: "CABLE",
+      isActive: true,
+      deleted: false
+    },
+    orderBy: { price: "asc" }
+  });
+  res.json(plans);
+});
+
 customersRouter.get("/", async (req, res) => {
   const organisationId = organisationScope(req);
   const query = z

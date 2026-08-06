@@ -49,6 +49,9 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
       setPlans(planList);
       setEmployees(employeeList);
       setBoxes(boxList);
+    } else if (user.role === "EMPLOYEE") {
+      const planList = await api<Plan[]>("/customers/cable-plans");
+      setPlans(planList);
     }
   }
 
