@@ -26,6 +26,7 @@ customersRouter.get("/", async (req, res) => {
   const now = new Date();
   const month = query.month ?? now.getMonth() + 1;
   const year = query.year ?? now.getFullYear();
+  const search = query.q?.trim();
   await ensureMonthlyBillings(organisationId, month, year);
 
   const customers = await prisma.customer.findMany({
@@ -35,16 +36,16 @@ customersRouter.get("/", async (req, res) => {
       ...(req.user!.role === Role.EMPLOYEE ? { collectorId: req.user!.id } : {}),
       ...(query.collectorId ? { collectorId: query.collectorId } : {}),
       ...(query.status ? { status: query.status } : {}),
-      ...(query.q
+      ...(search
         ? {
             OR: [
-              { customerCode: { contains: query.q } },
-              { firstName: { contains: query.q } },
-              { lastName: { contains: query.q } },
-              { phone: { contains: query.q } },
-              { address: { contains: query.q } },
-              { boxes: { some: { unassignedAt: null, setTopBox: { boxNumber: { contains: query.q } } } } },
-              { boxes: { some: { unassignedAt: null, setTopBox: { pairedCardNumber: { contains: query.q } } } } }
+              { customerCode: { contains: search, mode: "insensitive" } },
+              { firstName: { contains: search, mode: "insensitive" } },
+              { lastName: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search, mode: "insensitive" } },
+              { address: { contains: search, mode: "insensitive" } },
+              { boxes: { some: { unassignedAt: null, setTopBox: { boxNumber: { contains: search, mode: "insensitive" } } } } },
+              { boxes: { some: { unassignedAt: null, setTopBox: { pairedCardNumber: { contains: search, mode: "insensitive" } } } } }
             ]
           }
         : {})

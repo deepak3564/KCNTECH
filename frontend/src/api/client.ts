@@ -2,6 +2,10 @@ const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:4000/api";
 const API_ORIGIN = API_URL.replace(/\/api\/?$/, "");
 let pendingApiRequests = 0;
 
+type ApiOptions = RequestInit & {
+  showLoading?: boolean;
+};
+
 export type SessionUser = {
   id: string;
   name: string;
@@ -36,15 +40,16 @@ export function clearSession() {
   localStorage.removeItem("kcn_user");
 }
 
-export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
+export async function api<T>(path: string, options: ApiOptions = {}): Promise<T> {
+  const { showLoading = true, ...requestOptions } = options;
   const token = getToken();
-  const headers = new Headers(options.headers);
-  if (!(options.body instanceof FormData)) headers.set("Content-Type", "application/json");
+  const headers = new Headers(requestOptions.headers);
+  if (!(requestOptions.body instanceof FormData)) headers.set("Content-Type", "application/json");
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
-  beginApiRequest();
+  if (showLoading) beginApiRequest();
   try {
-    const response = await fetch(`${API_URL}${path}`, { ...options, headers }).catch(() => {
+    const response = await fetch(`${API_URL}${path}`, { ...requestOptions, headers }).catch(() => {
       const message = "Cannot Connect To Server. Please Check That Backend Is Running.";
       window.dispatchEvent(new CustomEvent("app-error", { detail: { message } }));
       throw new Error(message);
@@ -57,7 +62,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     }
     return data as T;
   } finally {
-    endApiRequest();
+    if (showLoading) endApiRequest();
   }
 }
 
