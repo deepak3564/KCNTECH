@@ -134,6 +134,7 @@ export function CustomerDrawer({
       <header className="drawer-header">
         <div>
           <h2>{customer.firstName} {customer.lastName}</h2>
+          <p>{t("Customer ID")}: {customer.customerCode ?? "NA"}</p>
           <p>{customer.address}</p>
         </div>
         <button className="small-button" onClick={onClose} title={t("Close")}><X size={16} /></button>
