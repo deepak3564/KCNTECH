@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, saveSession, SessionUser } from "../../../api/client";
+import { api, getToken, saveSession, SessionUser } from "../../../api/client";
 import { useI18n } from "../../../i18n";
 
 export function ChangePasswordTab({ user, onUserChange }: { user: SessionUser; onUserChange: (user: SessionUser) => void }) {
@@ -16,7 +16,7 @@ export function ChangePasswordTab({ user, onUserChange }: { user: SessionUser; o
     try {
       await api("/auth/change-password", { method: "POST", body: JSON.stringify({ currentPassword, newPassword }) });
       const updated = { ...user, mustChangePassword: false };
-      saveSession(localStorage.getItem("kcn_token") ?? "", updated);
+      saveSession(getToken() ?? "", updated);
       onUserChange(updated);
       setCurrentPassword("");
       setNewPassword("");

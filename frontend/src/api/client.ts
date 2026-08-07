@@ -19,16 +19,20 @@ export type SessionUser = {
 };
 
 export function getToken() {
-  return localStorage.getItem("kcn_token");
+  return sessionStorage.getItem("kcn_token");
 }
 
 export function saveSession(token: string, user: SessionUser) {
-  localStorage.setItem("kcn_token", token);
-  localStorage.setItem("kcn_user", JSON.stringify(user));
+  if (token) sessionStorage.setItem("kcn_token", token);
+  sessionStorage.setItem("kcn_user", JSON.stringify(user));
+  localStorage.removeItem("kcn_token");
+  localStorage.removeItem("kcn_user");
 }
 
 export function getSavedUser(): SessionUser | null {
-  const raw = localStorage.getItem("kcn_user");
+  localStorage.removeItem("kcn_token");
+  localStorage.removeItem("kcn_user");
+  const raw = sessionStorage.getItem("kcn_user");
   if (!raw) return null;
   const user = JSON.parse(raw) as SessionUser;
   const preferredTheme = ["brand", "light", "dark"].includes(user.preferredTheme) ? user.preferredTheme : "professional";
@@ -36,6 +40,8 @@ export function getSavedUser(): SessionUser | null {
 }
 
 export function clearSession() {
+  sessionStorage.removeItem("kcn_token");
+  sessionStorage.removeItem("kcn_user");
   localStorage.removeItem("kcn_token");
   localStorage.removeItem("kcn_user");
 }
