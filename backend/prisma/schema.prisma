@@ -49,13 +49,14 @@ enum BoxStatus {
 }
 
 model Organisation {
-  id        String     @id @default(cuid())
-  name      String     @unique
-  createdAt DateTime   @default(now())
-  users     User[]
-  plans     Plan[]
-  customers Customer[]
-  boxes     SetTopBox[]
+  id                    String     @id @default(cuid())
+  name                  String     @unique
+  notificationEmail     String?
+  createdAt             DateTime   @default(now())
+  users                 User[]
+  plans                 Plan[]
+  customers             Customer[]
+  boxes                 SetTopBox[]
 }
 
 model User {

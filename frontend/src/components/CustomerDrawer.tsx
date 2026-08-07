@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Download, X } from "lucide-react";
 import { api, money, SessionUser, uploadUrl } from "../api/client";
 import { useI18n } from "../i18n";
@@ -49,6 +49,14 @@ export function CustomerDrawer({
   const [advanceError, setAdvanceError] = useState("");
   const { t } = useI18n();
   const cablePlanOptions = plans.filter((plan) => plan.type === "CABLE" && plan.isActive !== false);
+
+  useEffect(() => {
+    setAmount(String(pendingAmount));
+  }, [pendingAmount]);
+
+  useEffect(() => {
+    setEmployeeCablePlanId(customer.cablePlanId ?? "");
+  }, [customer.cablePlanId]);
 
   async function collect(event: React.FormEvent) {
     event.preventDefault();
