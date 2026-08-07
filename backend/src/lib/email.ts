@@ -37,12 +37,14 @@ export async function sendPaymentReceivedEmail(input: PaymentEmailInput) {
 
   const port = Number(process.env.SMTP_PORT ?? 587);
   const secure = process.env.SMTP_SECURE === "true" || port === 465;
+  const family = Number(process.env.SMTP_FAMILY ?? 4);
   const transporter = nodemailer.createTransport({
     host,
     port,
     secure,
+    family,
     auth: { user, pass }
-  });
+  } as Parameters<typeof nodemailer.createTransport>[0]);
 
   const subject = `${input.organisationName}: Payment Received - ${input.customerCode ?? input.customerId}`;
   const text = [
