@@ -2,7 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { hashPassword, signToken, verifyPassword } from "../lib/auth.js";
-import { requireAuth } from "../middleware/auth.js";
+import { organisationScope, requireAuth, requireRole } from "../middleware/auth.js";
+import { Role } from "@prisma/client";
 
 export const authRouter = Router();
 
@@ -50,6 +51,28 @@ authRouter.put("/theme", requireAuth, async (req, res) => {
   });
 
   return res.json(sessionUser(user));
+});
+
+authRouter.get("/mail-notification", requireAuth, requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: organisationId },
+    select: { notificationEmail: true }
+  });
+
+  res.json({ notificationEmail: organisation?.notificationEmail ?? "" });
+});
+
+authRouter.put("/mail-notification", requireAuth, requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const body = z.object({ notificationEmail: z.string().email().or(z.literal("")) }).parse(req.body);
+  const organisation = await prisma.organisation.update({
+    where: { id: organisationId },
+    data: { notificationEmail: body.notificationEmail.trim() || null },
+    select: { notificationEmail: true }
+  });
+
+  res.json({ notificationEmail: organisation.notificationEmail ?? "" });
 });
 
 authRouter.post("/change-password", requireAuth, async (req, res) => {

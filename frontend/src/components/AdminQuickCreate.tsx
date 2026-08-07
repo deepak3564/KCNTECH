@@ -12,10 +12,10 @@ export function AdminQuickCreate({ plans, employees, boxes, month, year, reload 
   return (
     <section className="admin-panel">
       <div className="quick-actions">
-        <button onClick={() => setOpen("customer")}><Plus size={16} /> {t("Customer")}</button>
-        <button onClick={() => setOpen("employee")}><UserPlus size={16} /> {t("Employee")}</button>
-        <button onClick={() => setOpen("plan")}><Cable size={16} /> {t("Plan")}</button>
-        <button onClick={() => setOpen("box")}><CreditCard size={16} /> STB</button>
+        <button className={open === "customer" ? "active-action" : ""} onClick={() => setOpen("customer")}><Plus size={16} /> {t("Customer")}</button>
+        <button className={open === "employee" ? "active-action" : ""} onClick={() => setOpen("employee")}><UserPlus size={16} /> {t("Employee")}</button>
+        <button className={open === "plan" ? "active-action" : ""} onClick={() => setOpen("plan")}><Cable size={16} /> {t("Plan")}</button>
+        <button className={open === "box" ? "active-action" : ""} onClick={() => setOpen("box")}><CreditCard size={16} /> STB</button>
       </div>
       {open === "customer" && <CustomerForm plans={plans} employees={employees} boxes={boxes} month={month} year={year} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "employee" && <SimpleCreate path="/admin/employees" fields={["name", "email", "phone", "password"]} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}

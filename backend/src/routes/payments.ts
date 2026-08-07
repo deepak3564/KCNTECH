@@ -5,6 +5,7 @@ import { z } from "zod";
 import { ensureMonthlyBillings, recalculateBillingStatus } from "../lib/billing.js";
 import { addCustomerHistory } from "../lib/customerHistory.js";
 import { prisma } from "../lib/db.js";
+import { sendPaymentReceivedEmail } from "../lib/email.js";
 import { organisationScope, requireAuth, requireRole } from "../middleware/auth.js";
 
 const upload = multer({ dest: "uploads/" });
@@ -110,8 +111,65 @@ paymentsRouter.post("/", upload.single("proof"), async (req, res) => {
     userId: req.user!.id,
     comment: `Payment collected: ${body.amount} by ${body.mode} for ${paidPeriods}.`
   });
+  sendPaymentNotification({
+    organisationId,
+    customerId: billings[0].customerId,
+    amount: body.amount,
+    mode: body.mode,
+    collectorName: req.user!.name,
+    paidAt: payments[0]?.paidAt ?? new Date(),
+    periods: paidPeriods
+  }).catch((error) => console.error("Payment email notification failed", error));
   res.status(201).json(payments);
 });
+
+async function sendPaymentNotification({
+  organisationId,
+  customerId,
+  amount,
+  mode,
+  collectorName,
+  paidAt,
+  periods
+}: {
+  organisationId: string;
+  customerId: string;
+  amount: number;
+  mode: string;
+  collectorName: string;
+  paidAt: Date;
+  periods: string;
+}) {
+  const [organisation, customer, admins] = await Promise.all([
+    prisma.organisation.findUnique({ where: { id: organisationId } }),
+    prisma.customer.findFirst({
+      where: { id: customerId, organisationId },
+      include: { cablePlan: true, internetPlan: true }
+    }),
+    prisma.user.findMany({
+      where: { organisationId, role: Role.ADMIN, isActive: true, deleted: false },
+      select: { email: true }
+    })
+  ]);
+
+  if (!organisation || !customer) return;
+
+  await sendPaymentReceivedEmail({
+    organisationId,
+    organisationName: organisation.name,
+    customerId: customer.id,
+    customerCode: customer.customerCode,
+    customerName: `${customer.firstName} ${customer.lastName ?? ""}`.trim(),
+    cablePlan: customer.cablePlan ? `${customer.cablePlan.name} - ${customer.cablePlan.price}` : "NA",
+    internetPlan: customer.internetPlan ? `${customer.internetPlan.name} - ${customer.internetPlan.price}` : "NA",
+    amount,
+    mode,
+    collectorName,
+    paidAt,
+    periods,
+    recipients: organisation.notificationEmail ? [organisation.notificationEmail] : admins.map((admin) => admin.email)
+  });
+}
 
 async function overridePlansForBilling(organisationId: string, customerId: string, month: number, year: number, cablePlanId: string | null, internetPlanId: string | null) {
   const [customer, cablePlan, internetPlan, maintenance] = await Promise.all([
