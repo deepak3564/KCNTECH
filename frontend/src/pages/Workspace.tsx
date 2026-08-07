@@ -113,8 +113,12 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     setCustomers(list);
   }
 
+  const profileTools = user.role === "ADMIN"
+    ? <AdminQuickCreate plans={plans} employees={employees} boxes={boxes} month={month} year={year} reload={load} />
+    : undefined;
+
   return (
-    <Shell user={user} onLogout={onLogout} onUserChange={onUserChange}>
+    <Shell user={user} onLogout={onLogout} onUserChange={onUserChange} profileTools={profileTools}>
       <main className="content">
         <section className="period-row">
           <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>{Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{new Date(2024, i).toLocaleString("en", { month: "short" })}</option>)}</select>
@@ -151,7 +155,6 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
             <option value="">{t("All Payment")}</option><option value="PENDING">{t("Pending")}</option><option value="PARTIAL">{t("Partial")}</option><option value="PAID">{t("Paid")}</option>
           </select>
         </section>
-        {user.role === "ADMIN" && <AdminQuickCreate plans={plans} employees={employees} boxes={boxes} month={month} year={year} reload={load} />}
         {user.role === "ADMIN" && <SetupLists plans={plans} employees={employees} boxes={boxes} reload={load} />}
         <EmployeeLedger user={user} employees={employees} />
         {user.role === "ADMIN" && <PaymentHistoryReport employees={employees} organisationName={user.organisationName} />}
