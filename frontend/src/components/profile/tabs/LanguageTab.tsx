@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, saveSession, SessionUser } from "../../../api/client";
+import { api, getToken, saveSession, SessionUser } from "../../../api/client";
 import { Language, useI18n } from "../../../i18n";
 
 export function LanguageTab({ user, onUserChange }: { user: SessionUser; onUserChange: (user: SessionUser) => void }) {
@@ -14,7 +14,7 @@ export function LanguageTab({ user, onUserChange }: { user: SessionUser; onUserC
         method: "PUT",
         body: JSON.stringify({ preferredLanguage: nextLanguage })
       });
-      saveSession(localStorage.getItem("kcn_token") ?? "", updated);
+      saveSession(getToken() ?? "", updated);
       onUserChange(updated);
     } catch (err) {
       setLanguage(user.preferredLanguage);

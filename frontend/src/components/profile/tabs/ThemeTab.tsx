@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, saveSession, SessionUser } from "../../../api/client";
+import { api, getToken, saveSession, SessionUser } from "../../../api/client";
 import { useI18n } from "../../../i18n";
 
 type Theme = SessionUser["preferredTheme"];
@@ -17,7 +17,7 @@ export function ThemeTab({ user, onUserChange }: { user: SessionUser; onUserChan
         method: "PUT",
         body: JSON.stringify({ preferredTheme: nextTheme })
       });
-      saveSession(localStorage.getItem("kcn_token") ?? "", updated);
+      saveSession(getToken() ?? "", updated);
       onUserChange(updated);
     } catch (err) {
       document.documentElement.dataset.theme = currentTheme;
