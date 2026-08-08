@@ -475,7 +475,7 @@ input, select {
   color: #1d2528;
   font-size: 13px;
 }
-.tool-row { grid-template-columns: minmax(180px, 1fr) minmax(180px, 0.8fr) auto 150px; }
+.tool-row { grid-template-columns: minmax(180px, 1fr) minmax(180px, 0.8fr) auto minmax(150px, 0.45fr) 150px; }
 .search { position: relative; display: block; }
 .search svg { position: absolute; left: 12px; top: 13px; color: #61706f; }
 .search input { padding-left: 38px; }
