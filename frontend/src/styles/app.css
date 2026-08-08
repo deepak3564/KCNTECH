@@ -441,6 +441,40 @@ input, select {
   color: #1d2528;
   font-size: 13px;
 }
+.collection-summary-panel {
+  gap: 12px;
+}
+.collection-summary-metrics {
+  grid-template-columns: repeat(3, 1fr);
+}
+.collection-summary-list {
+  max-height: 430px;
+  overflow-y: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 4px;
+}
+.collection-summary-row {
+  display: grid;
+  grid-template-columns: minmax(150px, 1.5fr) repeat(9, minmax(82px, 1fr));
+  gap: 8px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid #dbe4e1;
+  border-radius: 8px;
+  background: #f8faf9;
+}
+.collection-summary-row > div,
+.collection-summary-row span {
+  display: grid;
+  gap: 3px;
+  color: #63706c;
+  font-size: 12px;
+}
+.collection-summary-row strong {
+  color: #1d2528;
+  font-size: 13px;
+}
 .tool-row { grid-template-columns: minmax(180px, 1fr) minmax(180px, 0.8fr) auto 150px; }
 .search { position: relative; display: block; }
 .search svg { position: absolute; left: 12px; top: 13px; color: #61706f; }
@@ -1119,7 +1153,8 @@ input, select {
 
 :root[data-theme="dark"] .profile-nav,
 :root[data-theme="dark"] .handover-history-row,
-:root[data-theme="dark"] .payment-report-row {
+:root[data-theme="dark"] .payment-report-row,
+:root[data-theme="dark"] .collection-summary-row {
   background: #101611;
 }
 
@@ -1263,7 +1298,7 @@ h3,
 @media (max-width: 760px) {
   .content { padding: 12px; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
-  .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
+  .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .collection-summary-metrics, .collection-summary-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
   .period-row, .tool-row, .inline-form, .grid-form, .ledger-row, .payment-report-filters, .advance-period-row, .customer-edit-form, .add-form-fields { width: 100%; overflow: hidden; }
   .period-row > *, .tool-row > *, .inline-form > *, .grid-form > *, .ledger-row > *, .payment-report-filters > *, .advance-period-row > *, .customer-edit-form > *, .add-form-fields > * { min-width: 0; width: 100%; }
   .master-row { grid-template-columns: 1fr; align-items: start; }

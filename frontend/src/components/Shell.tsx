@@ -7,6 +7,7 @@ export type ProfileToolTabs = {
   add?: React.ReactNode;
   lists?: React.ReactNode;
   ledger?: React.ReactNode;
+  collectionSummary?: React.ReactNode;
   payments?: React.ReactNode;
 };
 

@@ -11,7 +11,7 @@ import { MailNotificationTab } from "./tabs/MailNotificationTab";
 import { ThemeTab } from "./tabs/ThemeTab";
 import { useI18n } from "../../i18n";
 
-type ProfileTab = "about" | "add" | "lists" | "ledger" | "payments" | "internet" | "mail" | "password" | "language" | "theme" | "logout";
+type ProfileTab = "about" | "add" | "lists" | "ledger" | "collectionSummary" | "payments" | "internet" | "mail" | "password" | "language" | "theme" | "logout";
 
 export function ProfileWindow({
   user,
@@ -45,6 +45,7 @@ export function ProfileWindow({
             {profileTools?.add && <button className={tab === "add" ? "active-tab" : ""} onClick={() => setTab("add")}>{t("Add")}</button>}
             {profileTools?.lists && <button className={tab === "lists" ? "active-tab" : ""} onClick={() => setTab("lists")}>{t("Lists")}</button>}
             {profileTools?.ledger && <button className={tab === "ledger" ? "active-tab" : ""} onClick={() => setTab("ledger")}>{t("Employee Ledger")}</button>}
+            {profileTools?.collectionSummary && <button className={tab === "collectionSummary" ? "active-tab" : ""} onClick={() => setTab("collectionSummary")}>{t("Employee Collection Summary")}</button>}
             {profileTools?.payments && <button className={tab === "payments" ? "active-tab" : ""} onClick={() => setTab("payments")}>{t("Payment History")}</button>}
             {user.role === "ADMIN" && <button className={tab === "internet" ? "active-tab" : ""} onClick={() => setTab("internet")}>{t("Internet Settings")}</button>}
             {user.role === "ADMIN" && <button className={tab === "mail" ? "active-tab" : ""} onClick={() => setTab("mail")}>{t("Mail Notification")}</button>}
@@ -58,6 +59,7 @@ export function ProfileWindow({
             {tab === "add" && profileTools?.add}
             {tab === "lists" && profileTools?.lists}
             {tab === "ledger" && profileTools?.ledger}
+            {tab === "collectionSummary" && profileTools?.collectionSummary}
             {tab === "payments" && profileTools?.payments}
             {tab === "internet" && <InternetSettingsTab user={user} onUserChange={onUserChange} />}
             {tab === "mail" && <MailNotificationTab />}
