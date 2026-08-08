@@ -88,6 +88,161 @@ reportsRouter.get("/employee-ledger", async (req, res) => {
   res.json({ collected, handedOver, balanceDueFromEmployee: collected - handedOver, payments, handovers });
 });
 
+reportsRouter.get("/employee-collection-summary", requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const now = new Date();
+  const query = z
+    .object({
+      month: z.coerce.number().int().min(1).max(12).default(now.getMonth() + 1),
+      year: z.coerce.number().int().default(now.getFullYear())
+    })
+    .parse(req.query);
+
+  await ensureMonthlyBillings(organisationId, query.month, query.year);
+
+  const monthStart = new Date(query.year, query.month - 1, 1);
+  const monthEnd = endOfDay(new Date(query.year, query.month, 0));
+
+  const [collectors, billings, handovers] = await Promise.all([
+    prisma.user.findMany({
+      where: {
+        organisationId,
+        role: { in: [Role.ADMIN, Role.EMPLOYEE] },
+        deleted: false
+      },
+      select: { id: true, name: true, email: true, role: true, isActive: true },
+      orderBy: [{ role: "asc" }, { name: "asc" }]
+    }),
+    prisma.monthlyBilling.findMany({
+      where: {
+        organisationId,
+        month: query.month,
+        year: query.year,
+        customer: { deleted: false, status: "ACTIVE" }
+      },
+      include: {
+        payments: true,
+        customer: { select: { collectorId: true } }
+      }
+    }),
+    prisma.employeeHandover.findMany({
+      where: {
+        organisationId,
+        handedOverAt: { gte: monthStart, lte: monthEnd }
+      }
+    })
+  ]);
+
+  const summary = new Map<string, {
+    collectorId: string | null;
+    collectorName: string;
+    collectorRole: string;
+    isActive: boolean;
+    assignedCustomers: number;
+    expected: number;
+    collected: number;
+    pending: number;
+    cashCollected: number;
+    adminUpiCollected: number;
+    employeeUpiCollected: number;
+    handedOver: number;
+    balanceDueFromCollector: number;
+  }>();
+
+  for (const collector of collectors) {
+    summary.set(collector.id, {
+      collectorId: collector.id,
+      collectorName: collector.name,
+      collectorRole: collector.role,
+      isActive: collector.isActive,
+      assignedCustomers: 0,
+      expected: 0,
+      collected: 0,
+      pending: 0,
+      cashCollected: 0,
+      adminUpiCollected: 0,
+      employeeUpiCollected: 0,
+      handedOver: 0,
+      balanceDueFromCollector: 0
+    });
+  }
+
+  const unassignedKey = "UNASSIGNED";
+  for (const billing of billings) {
+    const key = billing.customer.collectorId ?? unassignedKey;
+    if (!summary.has(key)) {
+      summary.set(key, {
+        collectorId: null,
+        collectorName: "Not Assigned",
+        collectorRole: "UNASSIGNED",
+        isActive: false,
+        assignedCustomers: 0,
+        expected: 0,
+        collected: 0,
+        pending: 0,
+        cashCollected: 0,
+        adminUpiCollected: 0,
+        employeeUpiCollected: 0,
+        handedOver: 0,
+        balanceDueFromCollector: 0
+      });
+    }
+    const row = summary.get(key)!;
+    row.assignedCustomers += 1;
+    row.expected += billing.totalAmount;
+    row.collected += billing.paidAmount;
+    row.pending += Math.max(billing.totalAmount - billing.paidAmount, 0);
+    for (const payment of billing.payments) {
+      if (payment.mode === PaymentMode.CASH) row.cashCollected += payment.amount;
+      if (payment.mode === PaymentMode.ADMIN_UPI) row.adminUpiCollected += payment.amount;
+      if (payment.mode === PaymentMode.EMPLOYEE_UPI) row.employeeUpiCollected += payment.amount;
+    }
+  }
+
+  for (const handover of handovers) {
+    const row = summary.get(handover.employeeId);
+    if (row) row.handedOver += handover.amount;
+  }
+
+  const rows = Array.from(summary.values())
+    .map((row) => ({
+      ...row,
+      balanceDueFromCollector: row.cashCollected + row.employeeUpiCollected - row.handedOver
+    }))
+    .filter((row) => row.assignedCustomers > 0 || row.collected > 0 || row.handedOver > 0)
+    .sort((a, b) => b.expected - a.expected || a.collectorName.localeCompare(b.collectorName));
+
+  res.json({
+    month: query.month,
+    year: query.year,
+    totals: rows.reduce(
+      (total, row) => ({
+        assignedCustomers: total.assignedCustomers + row.assignedCustomers,
+        expected: total.expected + row.expected,
+        collected: total.collected + row.collected,
+        pending: total.pending + row.pending,
+        cashCollected: total.cashCollected + row.cashCollected,
+        adminUpiCollected: total.adminUpiCollected + row.adminUpiCollected,
+        employeeUpiCollected: total.employeeUpiCollected + row.employeeUpiCollected,
+        handedOver: total.handedOver + row.handedOver,
+        balanceDueFromCollector: total.balanceDueFromCollector + row.balanceDueFromCollector
+      }),
+      {
+        assignedCustomers: 0,
+        expected: 0,
+        collected: 0,
+        pending: 0,
+        cashCollected: 0,
+        adminUpiCollected: 0,
+        employeeUpiCollected: 0,
+        handedOver: 0,
+        balanceDueFromCollector: 0
+      }
+    ),
+    rows
+  });
+});
+
 reportsRouter.get("/handover-history", requireRole(Role.ADMIN), async (req, res) => {
   const organisationId = organisationScope(req);
   const query = z
