@@ -7,6 +7,7 @@ import { CustomerCard } from "../components/CustomerCard";
 import { CustomerDrawer } from "../components/CustomerDrawer";
 import { DashboardCards } from "../components/DashboardCards";
 import { EmployeeLedger } from "../components/EmployeeLedger";
+import { EmployeeCollectionSummary } from "../components/EmployeeCollectionSummary";
 import { PaymentHistoryReport } from "../components/PaymentHistoryReport";
 import { SetupLists } from "../components/SetupLists";
 import { Shell } from "../components/Shell";
@@ -187,6 +188,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     add: <div className="profile-tool-panel"><AdminQuickCreate plans={visiblePlans} employees={collectors} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} reload={load} /></div>,
     lists: <div className="profile-tool-panel"><SetupLists plans={visiblePlans} employees={employees} boxes={boxes} reload={load} /></div>,
     ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>,
+    collectionSummary: <div className="profile-tool-panel"><EmployeeCollectionSummary /></div>,
     payments: <div className="profile-tool-panel"><PaymentHistoryReport employees={employees} organisationName={user.organisationName} /></div>
   } : {
     ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>
