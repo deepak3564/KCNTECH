@@ -74,7 +74,21 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     });
   }
 
-  useEffect(() => { load().catch(console.error); }, [month, year, paymentStatus]);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadWithRetry() {
+      try {
+        await load();
+      } catch (error) {
+        console.error(error);
+        window.setTimeout(() => {
+          if (!cancelled) load().catch(console.error);
+        }, 1200);
+      }
+    }
+    loadWithRetry();
+    return () => { cancelled = true; };
+  }, [month, year, paymentStatus]);
 
   useEffect(() => {
     const searchText = query.trim();
