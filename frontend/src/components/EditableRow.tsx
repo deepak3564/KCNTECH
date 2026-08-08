@@ -82,7 +82,7 @@ export function EditableRow({
 
   return (
     <div className="master-row">
-      <div>
+      <div className="master-row-main">
         <strong>{title}</strong>
         <span>{meta}</span>
       </div>
