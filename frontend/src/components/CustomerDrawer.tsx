@@ -15,6 +15,7 @@ export function CustomerDrawer({
   boxes,
   month,
   year,
+  internetEnabled,
   onClose,
   onRefresh
 }: {
@@ -25,6 +26,7 @@ export function CustomerDrawer({
   boxes: Box[];
   month: number;
   year: number;
+  internetEnabled: boolean;
   onClose: () => void;
   onRefresh: () => void | Promise<void>;
 }) {
@@ -152,14 +154,14 @@ export function CustomerDrawer({
         <span>{t("Customer ID")}<strong>{customer.customerCode ?? "NA"}</strong></span>
         <span>{t("Cable")}<strong>{customer.cablePlan ? `${customer.cablePlan.name} · ${money(customer.cablePlan.price)}` : "NA"}</strong></span>
         <span>{t("Cable Start Month")}<strong>{formatStartMonth(customer.cableStartMonth, customer.cableStartYear)}</strong></span>
-        <span>{t("Internet")}<strong>{customer.internetPlan ? `${customer.internetPlan.name} · ${money(customer.internetPlan.price)}` : "NA"}</strong></span>
-        <span>{t("Internet Start Month")}<strong>{formatStartMonth(customer.internetStartMonth, customer.internetStartYear)}</strong></span>
+        {internetEnabled && <span>{t("Internet")}<strong>{customer.internetPlan ? `${customer.internetPlan.name} · ${money(customer.internetPlan.price)}` : "NA"}</strong></span>}
+        {internetEnabled && <span>{t("Internet Start Month")}<strong>{formatStartMonth(customer.internetStartMonth, customer.internetStartYear)}</strong></span>}
         <span>{t("STB")}<strong>{customer.boxes[0]?.setTopBox.boxNumber ?? "NA"}</strong></span>
         <span>{t("Card")}<strong>{customer.boxes[0]?.setTopBox.pairedCardNumber ?? "NA"}</strong></span>
         <span>{t("Current Bill")}<strong>{bill ? `${t(bill.status[0] + bill.status.slice(1).toLowerCase())} · ${money(bill.totalAmount - bill.paidAmount)}` : "NA"}</strong></span>
       </div>
       <CustomerHistoryPanel customerId={customer.id} />
-      <CustomerPlanHistoryPanel customerId={customer.id} />
+      <CustomerPlanHistoryPanel customerId={customer.id} internetEnabled={internetEnabled} />
       {user.role === "EMPLOYEE" && customer.cableStatus !== "NA" && (
         <form className="payment-form" onSubmit={updateEmployeeCablePlan}>
           <h3>{t("Update Cable Plan")}</h3>
@@ -225,7 +227,7 @@ export function CustomerDrawer({
           </div>
         ))}
       </section>
-      {user.role === "ADMIN" && <AdminCustomerActions customer={customer} plans={plans} employees={employees} boxes={boxes} month={month} year={year} onRefresh={onRefresh} onClose={onClose} />}
+      {user.role === "ADMIN" && <AdminCustomerActions customer={customer} plans={plans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={internetEnabled} onRefresh={onRefresh} onClose={onClose} />}
     </aside>
   );
 }
@@ -257,6 +259,7 @@ function AdminCustomerActions({
   boxes,
   month,
   year,
+  internetEnabled,
   onRefresh,
   onClose
 }: {
@@ -266,6 +269,7 @@ function AdminCustomerActions({
   boxes: Box[];
   month: number;
   year: number;
+  internetEnabled: boolean;
   onRefresh: () => void | Promise<void>;
   onClose: () => void;
 }) {
@@ -320,11 +324,12 @@ function AdminCustomerActions({
       phone: values.phone.trim() || null,
       collectorId: values.collectorId || null,
       cablePlanId: values.cableStatus === "NA" ? null : values.cablePlanId || null,
-      internetPlanId: values.internetStatus === "NA" ? null : values.internetPlanId || null,
+      internetPlanId: !internetEnabled || values.internetStatus === "NA" ? null : values.internetPlanId || null,
       cableStartMonth: values.cableStatus === "NA" ? null : values.cableStartMonth,
       cableStartYear: values.cableStatus === "NA" ? null : values.cableStartYear,
-      internetStartMonth: values.internetStatus === "NA" ? null : values.internetStartMonth,
-      internetStartYear: values.internetStatus === "NA" ? null : values.internetStartYear,
+      internetStatus: internetEnabled ? values.internetStatus : "NA",
+      internetStartMonth: !internetEnabled || values.internetStatus === "NA" ? null : values.internetStartMonth,
+      internetStartYear: !internetEnabled || values.internetStatus === "NA" ? null : values.internetStartYear,
       setTopBoxId: values.setTopBoxId || null,
       effectiveMonth: month,
       effectiveYear: year,
@@ -373,10 +378,10 @@ function AdminCustomerActions({
           {values.cableStatus !== "NA" && <label>{t("Cable Plan")}<select value={values.cablePlanId} onChange={(e) => setValues({ ...values, cablePlanId: e.target.value })}><option value="">NA</option>{cablePlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}</select></label>}
           {values.cableStatus !== "NA" && <MonthSelect label={t("Cable Start Month")} value={values.cableStartMonth} onChange={(value) => setValues({ ...values, cableStartMonth: value })} />}
           {values.cableStatus !== "NA" && <YearInput label={t("Cable Start Year")} value={values.cableStartYear} onChange={(value) => setValues({ ...values, cableStartYear: value })} />}
-          <label>{t("Internet Status")}<select value={values.internetStatus} onChange={(e) => setValues({ ...values, internetStatus: e.target.value as Customer["internetStatus"] })}><option value="ACTIVE">{t("Active")}</option><option value="INACTIVE">{t("Inactive")}</option><option value="NA">NA</option></select></label>
-          {values.internetStatus !== "NA" && <label>{t("Internet Plan")}<select value={values.internetPlanId} onChange={(e) => setValues({ ...values, internetPlanId: e.target.value })}><option value="">NA</option>{internetPlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}</select></label>}
-          {values.internetStatus !== "NA" && <MonthSelect label={t("Internet Start Month")} value={values.internetStartMonth} onChange={(value) => setValues({ ...values, internetStartMonth: value })} />}
-          {values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => setValues({ ...values, internetStartYear: value })} />}
+          {internetEnabled && <label>{t("Internet Status")}<select value={values.internetStatus} onChange={(e) => setValues({ ...values, internetStatus: e.target.value as Customer["internetStatus"] })}><option value="ACTIVE">{t("Active")}</option><option value="INACTIVE">{t("Inactive")}</option><option value="NA">NA</option></select></label>}
+          {internetEnabled && values.internetStatus !== "NA" && <label>{t("Internet Plan")}<select value={values.internetPlanId} onChange={(e) => setValues({ ...values, internetPlanId: e.target.value })}><option value="">NA</option>{internetPlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}</select></label>}
+          {internetEnabled && values.internetStatus !== "NA" && <MonthSelect label={t("Internet Start Month")} value={values.internetStartMonth} onChange={(value) => setValues({ ...values, internetStartMonth: value })} />}
+          {internetEnabled && values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => setValues({ ...values, internetStartYear: value })} />}
           <label className="full-field">{t("Notes")}<input value={values.notes} onChange={(e) => setValues({ ...values, notes: e.target.value })} /></label>
           <div className="edit-actions full-field">
             <button className="primary">{t("Save Customer Details")}</button>

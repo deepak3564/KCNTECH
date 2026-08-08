@@ -28,8 +28,6 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
   const [toDate, setToDate] = useState(today);
   const [employeeId, setEmployeeId] = useState("");
   const [mode, setMode] = useState("");
-  const [billMonth, setBillMonth] = useState("");
-  const [billYear, setBillYear] = useState("");
   const [query, setQuery] = useState("");
   const [history, setHistory] = useState<PaymentHistoryResponse | null>(null);
   const [error, setError] = useState("");
@@ -41,8 +39,6 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
       toDate,
       ...(employeeId ? { employeeId } : {}),
       ...(mode ? { mode } : {}),
-      ...(billMonth ? { billMonth } : {}),
-      ...(billYear ? { billYear } : {}),
       ...(query.trim() ? { q: query.trim() } : {})
     });
   }
@@ -79,8 +75,6 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
       filters: [
         [t("From"), fromDate],
         [t("To"), toDate],
-        [t("Bill Month"), billMonth ? new Date(2024, Number(billMonth) - 1).toLocaleString("en", { month: "long" }) : t("All Months")],
-        [t("Bill Year"), billYear || t("All Years")],
         [t("Employee"), employees.find((employee) => employee.id === employeeId)?.name ?? t("All Employees")],
         [t("Mode"), mode ? t(mode) : t("All Modes")],
         [t("Search Customer"), query.trim() || t("All")]
@@ -111,11 +105,9 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
       <div className="payment-report-filters">
         <label>{t("From")}<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
         <label>{t("To")}<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
-        <label>{t("Bill Month")}<select value={billMonth} onChange={(event) => setBillMonth(event.target.value)}><option value="">{t("All Months")}</option>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2024, index).toLocaleString("en", { month: "short" })}</option>)}</select></label>
-        <label>{t("Bill Year")}<input type="number" value={billYear} onChange={(event) => setBillYear(event.target.value)} placeholder={t("All Years")} /></label>
         <label>{t("Employee")}<select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}><option value="">{t("All Employees")}</option>{employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label>{t("Mode")}<select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">{t("All Modes")}</option><option value="CASH">{t("Cash")}</option><option value="ADMIN_UPI">{t("Admin UPI")}</option><option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
-        <label className="search"><Search size={16} /><input placeholder={t("Search Customer")} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
+        <label className="search"><Search size={16} /><input placeholder={t("Search Customer ID, Name, STB, Card")} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
         <button type="button" onClick={toggle}>{open ? t("Hide Payment History") : t("View Payment History")}</button>
         {open && <button type="button" onClick={loadHistory}>{t("Search")}</button>}
         {open && <button type="button" onClick={exportPdf}>{t("Export PDF")}</button>}
