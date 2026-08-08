@@ -104,7 +104,7 @@ function CustomerForm({ plans, employees, boxes, month, year, internetEnabled, o
         <label>{t("Last Name")}<input onChange={(e) => set("lastName", e.target.value)} /></label>
         <label>{t("Phone")}<input onChange={(e) => set("phone", e.target.value)} /></label>
         <label>{t("Address")}<input onChange={(e) => set("address", e.target.value)} /></label>
-        <label>{t("Collector")}<select onChange={(e) => set("collectorId", e.target.value)}><option value="">{t("Select")}</option>{activeEmployees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>{t("Collector")}<select onChange={(e) => set("collectorId", e.target.value)}><option value="">{t("Select")}</option>{activeEmployees.map((item) => <option key={item.id} value={item.id}>{item.name}{item.role === "ADMIN" ? ` (${t("Admin")})` : ""}</option>)}</select></label>
         <label>{t("Cable")}<select value={values.cableStatus} onChange={(e) => set("cableStatus", e.target.value)}><option value="ACTIVE">{t("Active")}</option><option value="INACTIVE">{t("Inactive")}</option><option value="NA">NA</option></select></label>
         {values.cableStatus !== "NA" && <label>{t("Cable Plan")}<select onChange={(e) => set("cablePlanId", e.target.value)}><option value="">NA</option>{activeCablePlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
         {values.cableStatus !== "NA" && <MonthSelect label={t("Cable Start Month")} value={values.cableStartMonth} onChange={(value) => set("cableStartMonth", value)} />}

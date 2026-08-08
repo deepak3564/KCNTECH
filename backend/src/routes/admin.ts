@@ -21,6 +21,21 @@ adminRouter.get("/employees", async (req, res) => {
   res.json(employees);
 });
 
+adminRouter.get("/collectors", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const collectors = await prisma.user.findMany({
+    where: {
+      organisationId,
+      role: { in: [Role.ADMIN, Role.EMPLOYEE] },
+      isActive: true,
+      deleted: false
+    },
+    select: { id: true, name: true, email: true, phone: true, isActive: true, role: true, createdAt: true },
+    orderBy: [{ role: "asc" }, { createdAt: "asc" }]
+  });
+  res.json(collectors);
+});
+
 adminRouter.post("/employees", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z
@@ -437,10 +452,16 @@ async function validateCustomerSelections(
   currentCustomerId?: string
 ) {
   if (selections.collectorId) {
-    const employee = await prisma.user.findFirst({
-      where: { id: selections.collectorId, organisationId, role: Role.EMPLOYEE, isActive: true, deleted: false }
+    const collector = await prisma.user.findFirst({
+      where: {
+        id: selections.collectorId,
+        organisationId,
+        role: { in: [Role.ADMIN, Role.EMPLOYEE] },
+        isActive: true,
+        deleted: false
+      }
     });
-    if (!employee) throw new Error("Selected Employee Is Inactive Or Not Available.");
+    if (!collector) throw new Error("Selected Collector Is Inactive Or Not Available.");
   }
 
   if (selections.cablePlanId) {
