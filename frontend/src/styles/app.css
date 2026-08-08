@@ -661,16 +661,27 @@ input, select {
 }
 .master-row {
   min-height: 58px;
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
   align-items: center;
   gap: 10px;
   border-top: 1px solid #edf2f1;
   padding-top: 8px;
 }
-.master-row div { display: grid; gap: 2px; min-width: 0; }
-.master-row strong, .master-row span { overflow-wrap: anywhere; }
-.master-row div span, .empty { color: #61706f; font-size: 0.82rem; }
+.master-row-main {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+.master-row strong,
+.master-row span {
+  overflow-wrap: anywhere;
+}
+.master-row-main span,
+.empty {
+  color: #61706f;
+  font-size: 0.82rem;
+}
 .stb-row-block {
   display: grid;
   gap: 8px;
@@ -692,7 +703,7 @@ input, select {
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  flex-shrink: 0;
+  min-width: max-content;
 }
 .small-button {
   width: 34px;
@@ -1255,6 +1266,8 @@ h3,
   .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
   .period-row, .tool-row, .inline-form, .grid-form, .ledger-row, .payment-report-filters, .advance-period-row, .customer-edit-form, .add-form-fields { width: 100%; overflow: hidden; }
   .period-row > *, .tool-row > *, .inline-form > *, .grid-form > *, .ledger-row > *, .payment-report-filters > *, .advance-period-row > *, .customer-edit-form > *, .add-form-fields > * { min-width: 0; width: 100%; }
+  .master-row { grid-template-columns: 1fr; align-items: start; }
+  .row-actions { justify-content: flex-start; }
   input[type="date"], input[type="number"], select { width: 100%; max-width: 100%; }
   .form-heading { grid-column: auto; }
   .customer-card { align-items: start; display: grid; gap: 12px; }
