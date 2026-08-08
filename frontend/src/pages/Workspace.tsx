@@ -25,14 +25,18 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Customer[]>([]);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [addressQuery, setAddressQuery] = useState("");
+  const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
+  const [addressOpen, setAddressOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("");
   const [billingMessage, setBillingMessage] = useState("");
   const [generatingBills, setGeneratingBills] = useState(false);
   const searchRequestId = useRef(0);
+  const addressRequestId = useRef(0);
   const { t } = useI18n();
 
   async function load() {
-    const params = new URLSearchParams({ month: String(month), year: String(year), ...(query ? { q: query } : {}), ...(paymentStatus ? { paymentStatus } : {}) });
+    const params = customerParams();
     const [dash, list] = await Promise.all([
       api<Dashboard>(`/reports/dashboard?month=${month}&year=${year}`),
       api<Customer[]>(`/customers?${params.toString()}`)
@@ -55,6 +59,16 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     }
   }
 
+  function customerParams() {
+    return new URLSearchParams({
+      month: String(month),
+      year: String(year),
+      ...(query.trim() ? { q: query.trim() } : {}),
+      ...(addressQuery.trim() ? { address: addressQuery.trim() } : {}),
+      ...(paymentStatus ? { paymentStatus } : {})
+    });
+  }
+
   useEffect(() => { load().catch(console.error); }, [month, year, paymentStatus]);
 
   useEffect(() => {
@@ -72,6 +86,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
         month: String(month),
         year: String(year),
         q: searchText,
+        ...(addressQuery.trim() ? { address: addressQuery.trim() } : {}),
         ...(paymentStatus ? { paymentStatus } : {})
       });
       try {
@@ -90,7 +105,35 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     }, 250);
 
     return () => window.clearTimeout(timer);
-  }, [query, month, year, paymentStatus]);
+  }, [query, addressQuery, month, year, paymentStatus]);
+
+  useEffect(() => {
+    const searchText = addressQuery.trim();
+    const requestId = addressRequestId.current + 1;
+    addressRequestId.current = requestId;
+    if (!searchText) {
+      setAddressSuggestions([]);
+      setAddressOpen(false);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const list = await api<string[]>(`/customers/address-suggestions?q=${encodeURIComponent(searchText)}`, { showLoading: false });
+        if (addressRequestId.current !== requestId) return;
+        setAddressSuggestions(list);
+        setAddressOpen(true);
+      } catch (error) {
+        if (addressRequestId.current === requestId) {
+          setAddressSuggestions([]);
+          setAddressOpen(false);
+        }
+        console.error(error);
+      }
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [addressQuery]);
 
   async function generateBills() {
     setBillingMessage("");
@@ -108,14 +151,43 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     setQuery("");
     setSuggestions([]);
     setSearchOpen(false);
-    const params = new URLSearchParams({ month: String(month), year: String(year), ...(paymentStatus ? { paymentStatus } : {}) });
+    const params = new URLSearchParams({ month: String(month), year: String(year), ...(addressQuery.trim() ? { address: addressQuery.trim() } : {}), ...(paymentStatus ? { paymentStatus } : {}) });
     const list = await api<Customer[]>(`/customers?${params.toString()}`, { showLoading: false });
     setCustomers(list);
   }
 
-  const profileTools = user.role === "ADMIN"
-    ? <AdminQuickCreate plans={plans} employees={employees} boxes={boxes} month={month} year={year} reload={load} />
-    : undefined;
+  async function clearAddress() {
+    setAddressQuery("");
+    setAddressSuggestions([]);
+    setAddressOpen(false);
+    const params = new URLSearchParams({ month: String(month), year: String(year), ...(query.trim() ? { q: query.trim() } : {}), ...(paymentStatus ? { paymentStatus } : {}) });
+    const list = await api<Customer[]>(`/customers?${params.toString()}`, { showLoading: false });
+    setCustomers(list);
+  }
+
+  async function selectAddress(address: string) {
+    setAddressQuery(address);
+    setAddressOpen(false);
+    const params = new URLSearchParams({
+      month: String(month),
+      year: String(year),
+      ...(query.trim() ? { q: query.trim() } : {}),
+      address,
+      ...(paymentStatus ? { paymentStatus } : {})
+    });
+    const list = await api<Customer[]>(`/customers?${params.toString()}`, { showLoading: false });
+    setCustomers(list);
+  }
+
+  const visiblePlans = user.internetEnabled ? plans : plans.filter((plan) => plan.type === "CABLE");
+  const profileTools = user.role === "ADMIN" ? {
+    add: <div className="profile-tool-panel"><AdminQuickCreate plans={visiblePlans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} reload={load} /></div>,
+    lists: <div className="profile-tool-panel"><SetupLists plans={visiblePlans} employees={employees} boxes={boxes} reload={load} /></div>,
+    ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>,
+    payments: <div className="profile-tool-panel"><PaymentHistoryReport employees={employees} organisationName={user.organisationName} /></div>
+  } : {
+    ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>
+  };
 
   return (
     <Shell user={user} onLogout={onLogout} onUserChange={onUserChange} profileTools={profileTools}>
@@ -150,19 +222,36 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
               </div>
             )}
           </div>
+          <div className="search-wrap">
+            <label className="search"><Search size={16} /><input placeholder={t("Filter Address")} value={addressQuery} onFocus={() => addressQuery.trim() && setAddressOpen(true)} onBlur={() => window.setTimeout(() => setAddressOpen(false), 120)} onChange={(e) => setAddressQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /></label>
+            {addressQuery && <button className="search-clear" type="button" onClick={clearAddress}>{t("Clear")}</button>}
+            {addressOpen && addressSuggestions.length > 0 && (
+              <div className="customer-suggestions">
+                {addressSuggestions.map((address) => (
+                  <button
+                    key={address}
+                    type="button"
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => {
+                      selectAddress(address);
+                    }}
+                  >
+                    {address}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button onClick={load}><Search size={16} /> {t("Search")}</button>
           <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
             <option value="">{t("All Payment")}</option><option value="PENDING">{t("Pending")}</option><option value="PARTIAL">{t("Partial")}</option><option value="PAID">{t("Paid")}</option>
           </select>
         </section>
-        {user.role === "ADMIN" && <SetupLists plans={plans} employees={employees} boxes={boxes} reload={load} />}
-        <EmployeeLedger user={user} employees={employees} />
-        {user.role === "ADMIN" && <PaymentHistoryReport employees={employees} organisationName={user.organisationName} />}
         <section className="customer-list">
-          {customers.map((customer) => <CustomerCard key={customer.id} customer={customer} onOpen={() => setSelected(customer)} />)}
+          {customers.map((customer) => <CustomerCard key={customer.id} customer={customer} internetEnabled={user.internetEnabled} onOpen={() => setSelected(customer)} />)}
         </section>
       </main>
-      {selected && <CustomerDrawer customer={selected} user={user} plans={plans} employees={employees} boxes={boxes} month={month} year={year} onClose={() => setSelected(null)} onRefresh={load} />}
+      {selected && <CustomerDrawer customer={selected} user={user} plans={visiblePlans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} onClose={() => setSelected(null)} onRefresh={load} />}
     </Shell>
   );
 }

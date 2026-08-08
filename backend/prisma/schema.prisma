@@ -52,6 +52,7 @@ model Organisation {
   id                    String     @id @default(cuid())
   name                  String     @unique
   notificationEmail     String?
+  internetEnabled       Boolean    @default(false)
   createdAt             DateTime   @default(now())
   users                 User[]
   plans                 Plan[]

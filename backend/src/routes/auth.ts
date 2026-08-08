@@ -75,6 +75,28 @@ authRouter.put("/mail-notification", requireAuth, requireRole(Role.ADMIN), async
   res.json({ notificationEmail: organisation.notificationEmail ?? "" });
 });
 
+authRouter.get("/internet-settings", requireAuth, requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: organisationId },
+    select: { internetEnabled: true }
+  });
+
+  res.json({ internetEnabled: organisation?.internetEnabled ?? false });
+});
+
+authRouter.put("/internet-settings", requireAuth, requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const body = z.object({ internetEnabled: z.coerce.boolean() }).parse(req.body);
+  const organisation = await prisma.organisation.update({
+    where: { id: organisationId },
+    data: { internetEnabled: body.internetEnabled },
+    select: { internetEnabled: true }
+  });
+
+  return res.json({ internetEnabled: organisation.internetEnabled });
+});
+
 authRouter.post("/change-password", requireAuth, async (req, res) => {
   const body = z.object({ currentPassword: z.string(), newPassword: z.string().min(8) }).parse(req.body);
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
@@ -96,7 +118,7 @@ function sessionUser(user: {
   email: string;
   role: string;
   organisationId: string | null;
-  organisation?: { name: string } | null;
+  organisation?: { name: string; internetEnabled?: boolean | null } | null;
   mustChangePassword: boolean;
   preferredLanguage?: string | null;
   preferredTheme?: string | null;
@@ -110,6 +132,7 @@ function sessionUser(user: {
     role: user.role,
     organisationId: user.organisationId,
     organisationName: user.organisation?.name ?? "Platform",
+    internetEnabled: user.organisation?.internetEnabled ?? false,
     mustChangePassword: user.mustChangePassword,
     preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en",
     preferredTheme

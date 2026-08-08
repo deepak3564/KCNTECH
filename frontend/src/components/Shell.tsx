@@ -3,6 +3,13 @@ import { SessionUser } from "../api/client";
 import { useI18n } from "../i18n";
 import { ProfileMenu } from "./profile/ProfileMenu";
 
+export type ProfileToolTabs = {
+  add?: React.ReactNode;
+  lists?: React.ReactNode;
+  ledger?: React.ReactNode;
+  payments?: React.ReactNode;
+};
+
 export function Shell({
   user,
   onLogout,
@@ -14,7 +21,7 @@ export function Shell({
   onLogout: () => void;
   onUserChange: (user: SessionUser) => void;
   children: React.ReactNode;
-  profileTools?: React.ReactNode;
+  profileTools?: ProfileToolTabs;
 }) {
   const { t } = useI18n();
   return (
