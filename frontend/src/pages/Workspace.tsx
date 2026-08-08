@@ -21,6 +21,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   const [selected, setSelected] = useState<Customer | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [collectors, setCollectors] = useState<Employee[]>([]);
   const [boxes, setBoxes] = useState<Box[]>([]);
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Customer[]>([]);
@@ -45,13 +46,15 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     setCustomers(list);
     setSelected((current) => current ? list.find((customer) => customer.id === current.id) ?? current : null);
     if (user.role === "ADMIN") {
-      const [planList, employeeList, boxList] = await Promise.all([
+      const [planList, employeeList, collectorList, boxList] = await Promise.all([
         api<Plan[]>("/admin/plans"),
         api<Employee[]>("/admin/employees"),
+        api<Employee[]>("/admin/collectors"),
         api<Box[]>("/admin/set-top-boxes")
       ]);
       setPlans(planList);
       setEmployees(employeeList);
+      setCollectors(collectorList);
       setBoxes(boxList);
     } else if (user.role === "EMPLOYEE") {
       const planList = await api<Plan[]>("/customers/cable-plans");
@@ -181,7 +184,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
 
   const visiblePlans = user.internetEnabled ? plans : plans.filter((plan) => plan.type === "CABLE");
   const profileTools = user.role === "ADMIN" ? {
-    add: <div className="profile-tool-panel"><AdminQuickCreate plans={visiblePlans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} reload={load} /></div>,
+    add: <div className="profile-tool-panel"><AdminQuickCreate plans={visiblePlans} employees={collectors} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} reload={load} /></div>,
     lists: <div className="profile-tool-panel"><SetupLists plans={visiblePlans} employees={employees} boxes={boxes} reload={load} /></div>,
     ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>,
     payments: <div className="profile-tool-panel"><PaymentHistoryReport employees={employees} organisationName={user.organisationName} /></div>
@@ -251,7 +254,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
           {customers.map((customer) => <CustomerCard key={customer.id} customer={customer} internetEnabled={user.internetEnabled} onOpen={() => setSelected(customer)} />)}
         </section>
       </main>
-      {selected && <CustomerDrawer customer={selected} user={user} plans={visiblePlans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} onClose={() => setSelected(null)} onRefresh={load} />}
+      {selected && <CustomerDrawer customer={selected} user={user} plans={visiblePlans} employees={collectors} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} onClose={() => setSelected(null)} onRefresh={load} />}
     </Shell>
   );
 }

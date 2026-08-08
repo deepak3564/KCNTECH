@@ -62,6 +62,7 @@ export type Employee = {
   email: string;
   phone?: string;
   isActive: boolean;
+  role?: "ADMIN" | "EMPLOYEE";
 };
 
 export type Box = {
