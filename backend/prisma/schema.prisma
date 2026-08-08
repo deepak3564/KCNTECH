@@ -115,6 +115,7 @@ model Customer {
   notes          String?
   deleted        Boolean        @default(false)
   createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
   organisation   Organisation   @relation(fields: [organisationId], references: [id])
   collector      User?          @relation("CollectorCustomers", fields: [collectorId], references: [id])
   cablePlan      Plan?          @relation("CablePlan", fields: [cablePlanId], references: [id])

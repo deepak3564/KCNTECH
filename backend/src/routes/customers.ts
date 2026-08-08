@@ -72,7 +72,7 @@ customersRouter.get("/", async (req, res) => {
       organisationId,
       deleted: false,
       ...(req.user!.role === Role.EMPLOYEE ? { collectorId: req.user!.id } : {}),
-      ...(query.collectorId ? { collectorId: query.collectorId } : {}),
+      ...(req.user!.role === Role.ADMIN && query.collectorId ? { collectorId: query.collectorId } : {}),
       ...(query.status ? { status: query.status } : {}),
       ...(addressSearch ? { address: { contains: addressSearch, mode: "insensitive" } } : {}),
       ...(search
@@ -96,7 +96,7 @@ customersRouter.get("/", async (req, res) => {
       boxes: { where: { unassignedAt: null }, include: { setTopBox: true }, orderBy: { assignedAt: "desc" } },
       billings: { where: { month, year }, include: { payments: true } }
     },
-    orderBy: { firstName: "asc" }
+    orderBy: [{ updatedAt: "desc" }, { firstName: "asc" }]
   });
 
   const filtered = query.paymentStatus
