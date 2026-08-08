@@ -184,7 +184,7 @@ export function CustomerDrawer({
           <div className="history">{t("Pending")}<strong>{money(pendingAmount)}</strong></div>
           <label>{t("Amount")}<input type="number" min="0" value={amount} disabled={!hasPendingAmount} onChange={(e) => setAmount(e.target.value)} /></label>
           {paymentError && <p className="error inline-error">{t(paymentError)}</p>}
-          <label>{t("Mode")}<select value={mode} disabled={!hasPendingAmount} onChange={(e) => setMode(e.target.value)}><option value="CASH">{t("Cash")}</option><option value="ADMIN_UPI">{t("Admin UPI")}</option><option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
+          <label>{t("Mode")}<select value={mode} disabled={!hasPendingAmount} onChange={(e) => setMode(e.target.value)}><option value="CASH">{t("Cash")}</option>{user.role === "ADMIN" && <option value="ADMIN_UPI">{t("Admin UPI")}</option>}<option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
           {mode !== "CASH" && <ProofUpload proof={proof} disabled={!hasPendingAmount} onChange={setProof} />}
           <button className="primary" disabled={!hasPendingAmount}>{t("Mark Collected")}</button>
         </form>
@@ -203,7 +203,7 @@ export function CustomerDrawer({
             <div className="history">{t("Pending")}<strong>{money(advancePending)}</strong></div>
             <label>{t("Amount")}<input type="number" min="0" value={advanceAmount} disabled={!advanceBillingId || advancePending <= 0} onChange={(e) => setAdvanceAmount(e.target.value)} /></label>
             {advanceError && <p className="error inline-error">{t(advanceError)}</p>}
-            <label>{t("Mode")}<select value={advanceMode} disabled={!advanceBillingId || advancePending <= 0} onChange={(e) => setAdvanceMode(e.target.value)}><option value="CASH">{t("Cash")}</option><option value="ADMIN_UPI">{t("Admin UPI")}</option><option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
+            <label>{t("Mode")}<select value={advanceMode} disabled={!advanceBillingId || advancePending <= 0} onChange={(e) => setAdvanceMode(e.target.value)}><option value="CASH">{t("Cash")}</option>{user.role === "ADMIN" && <option value="ADMIN_UPI">{t("Admin UPI")}</option>}<option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
             {advanceMode !== "CASH" && <ProofUpload proof={advanceProof} disabled={!advanceBillingId || advancePending <= 0} onChange={setAdvanceProof} />}
             <button className="primary" disabled={!advanceBillingId || advancePending <= 0}>{t("Mark Advance Collected")}</button>
           </form>

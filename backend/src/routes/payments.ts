@@ -67,6 +67,9 @@ paymentsRouter.post("/", upload.single("proof"), async (req, res) => {
     .parse(req.body);
   const billingIds = body.billingIds ? JSON.parse(body.billingIds) as string[] : body.billingId ? [body.billingId] : [];
   if (!billingIds.length) return res.status(400).json({ message: "Please Select At Least One Bill." });
+  if (req.user!.role === Role.EMPLOYEE && body.mode === "ADMIN_UPI") {
+    return res.status(403).json({ message: "Employees Cannot Collect Admin UPI Payments." });
+  }
 
   const billings = await prisma.monthlyBilling.findMany({
     where: { id: { in: billingIds }, organisationId },

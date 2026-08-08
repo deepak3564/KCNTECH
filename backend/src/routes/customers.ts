@@ -46,6 +46,71 @@ customersRouter.get("/address-suggestions", async (req, res) => {
   res.json(rows.map((row) => row.address));
 });
 
+customersRouter.get("/search-cache", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const query = z
+    .object({
+      paymentStatus: z.enum(["PENDING", "PARTIAL", "PAID"]).optional(),
+      month: z.coerce.number().int().min(1).max(12).optional(),
+      year: z.coerce.number().int().optional()
+    })
+    .parse(req.query);
+
+  const now = new Date();
+  const month = query.month ?? now.getMonth() + 1;
+  const year = query.year ?? now.getFullYear();
+  await ensureMonthlyBillings(organisationId, month, year);
+
+  const customers = await prisma.customer.findMany({
+    where: {
+      organisationId,
+      deleted: false,
+      ...(req.user!.role === Role.EMPLOYEE ? { collectorId: req.user!.id } : {})
+    },
+    select: {
+      id: true,
+      collectorId: true,
+      customerCode: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      address: true,
+      status: true,
+      cableStatus: true,
+      internetStatus: true,
+      cablePlanId: true,
+      internetPlanId: true,
+      cableStartMonth: true,
+      cableStartYear: true,
+      internetStartMonth: true,
+      internetStartYear: true,
+      notes: true,
+      collector: { select: { id: true, name: true } },
+      boxes: {
+        where: { unassignedAt: null },
+        select: {
+          assignedAt: true,
+          unassignedAt: true,
+          reason: true,
+          setTopBox: { select: { id: true, boxNumber: true, pairedCardNumber: true } }
+        },
+        orderBy: { assignedAt: "desc" }
+      },
+      billings: {
+        where: { month, year },
+        select: { id: true, month: true, year: true, totalAmount: true, paidAmount: true, status: true },
+        take: 1
+      }
+    },
+    orderBy: [{ updatedAt: "desc" }, { firstName: "asc" }]
+  });
+
+  const filtered = query.paymentStatus
+    ? customers.filter((customer) => customer.billings[0]?.status === query.paymentStatus)
+    : customers;
+  res.json(filtered);
+});
+
 customersRouter.get("/", async (req, res) => {
   const organisationId = organisationScope(req);
   const query = z
