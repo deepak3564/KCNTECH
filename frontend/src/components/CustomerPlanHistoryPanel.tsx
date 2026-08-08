@@ -3,7 +3,7 @@ import { api, money } from "../api/client";
 import { useI18n } from "../i18n";
 import { CustomerPlanHistory } from "../types";
 
-export function CustomerPlanHistoryPanel({ customerId }: { customerId: string }) {
+export function CustomerPlanHistoryPanel({ customerId, internetEnabled }: { customerId: string; internetEnabled: boolean }) {
   const [open, setOpen] = useState(false);
   const [history, setHistory] = useState<CustomerPlanHistory[]>([]);
   const [loading, setLoading] = useState(false);
@@ -39,7 +39,7 @@ export function CustomerPlanHistoryPanel({ customerId }: { customerId: string })
             <article className="history-event" key={item.id}>
               <span>{item.customerName} · {new Date(2024, item.month - 1).toLocaleString("en", { month: "short" })} {item.year}</span>
               <strong>{t("Cable")}: {item.cablePlanName ? `${item.cablePlanName} · ${money(item.cablePrice)}` : "NA"}</strong>
-              <strong>{t("Internet")}: {item.internetPlanName ? `${item.internetPlanName} · ${money(item.internetPrice)}` : "NA"}</strong>
+              {internetEnabled && <strong>{t("Internet")}: {item.internetPlanName ? `${item.internetPlanName} · ${money(item.internetPrice)}` : "NA"}</strong>}
             </article>
           ))}
         </div>

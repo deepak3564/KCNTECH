@@ -6,7 +6,7 @@ import { Box, Employee, Plan } from "../types";
 import { labelFor } from "../utils/labels";
 import { SetTopBoxSearchSelect } from "./SetTopBoxSearchSelect";
 
-export function AdminQuickCreate({ plans, employees, boxes, month, year, reload }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; reload: () => void }) {
+export function AdminQuickCreate({ plans, employees, boxes, month, year, internetEnabled, reload }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; internetEnabled: boolean; reload: () => void }) {
   const [open, setOpen] = useState<"customer" | "employee" | "plan" | "box" | null>(null);
   const { t } = useI18n();
   return (
@@ -17,15 +17,15 @@ export function AdminQuickCreate({ plans, employees, boxes, month, year, reload 
         <button className={open === "plan" ? "active-action" : ""} onClick={() => setOpen("plan")}><Cable size={16} /> {t("Plan")}</button>
         <button className={open === "box" ? "active-action" : ""} onClick={() => setOpen("box")}><CreditCard size={16} /> STB</button>
       </div>
-      {open === "customer" && <CustomerForm plans={plans} employees={employees} boxes={boxes} month={month} year={year} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
+      {open === "customer" && <CustomerForm plans={plans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={internetEnabled} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "employee" && <SimpleCreate path="/admin/employees" fields={["name", "email", "phone", "password"]} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
-      {open === "plan" && <SimpleCreate path="/admin/plans" fields={["name", "type", "price"]} defaults={{ type: "CABLE" }} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
+      {open === "plan" && <SimpleCreate path="/admin/plans" fields={["name", "type", "price"]} defaults={{ type: "CABLE" }} internetEnabled={internetEnabled} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "box" && <SimpleCreate path="/admin/set-top-boxes" fields={["boxNumber", "pairedCardNumber", "notes"]} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
     </section>
   );
 }
 
-function SimpleCreate({ path, fields, defaults = {}, onCancel, done }: { path: string; fields: string[]; defaults?: Record<string, string>; onCancel: () => void; done: () => void }) {
+function SimpleCreate({ path, fields, defaults = {}, internetEnabled = true, onCancel, done }: { path: string; fields: string[]; defaults?: Record<string, string>; internetEnabled?: boolean; onCancel: () => void; done: () => void }) {
   const [values, setValues] = useState<Record<string, string>>(defaults);
   const [error, setError] = useState("");
   const { t } = useI18n();
@@ -56,7 +56,7 @@ function SimpleCreate({ path, fields, defaults = {}, onCancel, done }: { path: s
             {field === "type" ? (
               <select value={values[field] ?? "CABLE"} onChange={(e) => setValues({ ...values, [field]: e.target.value })}>
                 <option value="CABLE">{t("Cable")}</option>
-                <option value="INTERNET">{t("Internet")}</option>
+                {internetEnabled && <option value="INTERNET">{t("Internet")}</option>}
               </select>
             ) : (
               <input type={field.toLowerCase().includes("password") ? "password" : "text"} value={values[field] ?? ""} onChange={(e) => setValues({ ...values, [field]: e.target.value })} />
@@ -73,7 +73,7 @@ function SimpleCreate({ path, fields, defaults = {}, onCancel, done }: { path: s
   );
 }
 
-function CustomerForm({ plans, employees, boxes, month, year, onCancel, done }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; onCancel: () => void; done: () => void }) {
+function CustomerForm({ plans, employees, boxes, month, year, internetEnabled, onCancel, done }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; internetEnabled: boolean; onCancel: () => void; done: () => void }) {
   const activeEmployees = employees.filter((employee) => employee.isActive);
   const activeCablePlans = plans.filter((plan) => plan.type === "CABLE" && plan.isActive !== false);
   const activeInternetPlans = plans.filter((plan) => plan.type === "INTERNET" && plan.isActive !== false);
@@ -109,11 +109,19 @@ function CustomerForm({ plans, employees, boxes, month, year, onCancel, done }: 
         {values.cableStatus !== "NA" && <label>{t("Cable Plan")}<select onChange={(e) => set("cablePlanId", e.target.value)}><option value="">NA</option>{activeCablePlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
         {values.cableStatus !== "NA" && <MonthSelect label={t("Cable Start Month")} value={values.cableStartMonth} onChange={(value) => set("cableStartMonth", value)} />}
         {values.cableStatus !== "NA" && <YearInput label={t("Cable Start Year")} value={values.cableStartYear} onChange={(value) => set("cableStartYear", value)} />}
-        <label>{t("Internet")}<select value={values.internetStatus} onChange={(e) => set("internetStatus", e.target.value)}><option value="ACTIVE">{t("Active")}</option><option value="INACTIVE">{t("Inactive")}</option><option value="NA">NA</option></select></label>
-        {values.internetStatus !== "NA" && <label>{t("Internet Plan")}<select onChange={(e) => set("internetPlanId", e.target.value)}><option value="">NA</option>{activeInternetPlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
-        {values.internetStatus !== "NA" && <MonthSelect label={t("Internet Start Month")} value={values.internetStartMonth} onChange={(value) => set("internetStartMonth", value)} />}
-        {values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => set("internetStartYear", value)} />}
-        <SetTopBoxSearchSelect label={t("Set Top Box")} boxes={activeBoxes} value={values.setTopBoxId ?? ""} emptyLabel={t("Later")} onChange={(value) => set("setTopBoxId", value)} />
+        {internetEnabled && <label>{t("Internet")}<select value={values.internetStatus} onChange={(e) => set("internetStatus", e.target.value)}><option value="ACTIVE">{t("Active")}</option><option value="INACTIVE">{t("Inactive")}</option><option value="NA">NA</option></select></label>}
+        {internetEnabled && values.internetStatus !== "NA" && <label>{t("Internet Plan")}<select onChange={(e) => set("internetPlanId", e.target.value)}><option value="">NA</option>{activeInternetPlans.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>}
+        {internetEnabled && values.internetStatus !== "NA" && <MonthSelect label={t("Internet Start Month")} value={values.internetStartMonth} onChange={(value) => set("internetStartMonth", value)} />}
+        {internetEnabled && values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => set("internetStartYear", value)} />}
+        <SetTopBoxSearchSelect
+          label={t("Set Top Box")}
+          boxes={activeBoxes}
+          value={values.setTopBoxId ?? ""}
+          emptyLabel={t("Later")}
+          onChange={(value) => setValues({ ...values, setTopBoxId: value, newSetTopBoxNumber: "", newPairedCardNumber: "" })}
+        />
+        {!values.setTopBoxId && <label>{t("New Set Top Box Number")}<input value={values.newSetTopBoxNumber ?? ""} onChange={(e) => set("newSetTopBoxNumber", e.target.value)} /></label>}
+        {!values.setTopBoxId && <label>{t("New Paired Card Number")}<input value={values.newPairedCardNumber ?? ""} onChange={(e) => set("newPairedCardNumber", e.target.value)} /></label>}
       </div>
       <div className="add-form-actions">
         <button className="primary">{t("Save Customer")}</button>
@@ -131,7 +139,9 @@ function cleanServiceStarts(values: Record<string, string>) {
     cableStartYear: values.cableStatus === "NA" ? undefined : values.cableStartYear,
     internetPlanId: values.internetStatus === "NA" ? undefined : values.internetPlanId,
     internetStartMonth: values.internetStatus === "NA" ? undefined : values.internetStartMonth,
-    internetStartYear: values.internetStatus === "NA" ? undefined : values.internetStartYear
+    internetStartYear: values.internetStatus === "NA" ? undefined : values.internetStartYear,
+    newSetTopBoxNumber: values.setTopBoxId ? undefined : values.newSetTopBoxNumber,
+    newPairedCardNumber: values.setTopBoxId ? undefined : values.newPairedCardNumber
   };
   return Object.fromEntries(Object.entries(cleaned).filter(([, value]) => value !== undefined && value !== ""));
 }

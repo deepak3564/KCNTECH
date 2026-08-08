@@ -16,6 +16,7 @@ export type SessionUser = {
   mustChangePassword: boolean;
   preferredLanguage: "en" | "mr";
   preferredTheme: "professional" | "brand" | "light" | "dark";
+  internetEnabled: boolean;
 };
 
 export function getToken() {
@@ -36,7 +37,7 @@ export function getSavedUser(): SessionUser | null {
   if (!raw) return null;
   const user = JSON.parse(raw) as SessionUser;
   const preferredTheme = ["brand", "light", "dark"].includes(user.preferredTheme) ? user.preferredTheme : "professional";
-  return { ...user, preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en", preferredTheme };
+  return { ...user, preferredLanguage: user.preferredLanguage === "mr" ? "mr" : "en", preferredTheme, internetEnabled: user.internetEnabled === true };
 }
 
 export function clearSession() {

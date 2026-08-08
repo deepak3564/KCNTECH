@@ -120,14 +120,13 @@ reportsRouter.get("/payment-history", requireRole(Role.ADMIN), async (req, res) 
       employeeId: z.string().optional(),
       mode: z.nativeEnum(PaymentMode).optional(),
       q: z.string().optional(),
-      billMonth: z.coerce.number().int().min(1).max(12).optional(),
-      billYear: z.coerce.number().int().optional(),
       fromDate: z.coerce.date(),
       toDate: z.coerce.date()
     })
     .parse(req.query);
   const fromDate = startOfDay(query.fromDate);
   const toDate = endOfDay(query.toDate);
+  const search = query.q?.trim();
 
   const payments = await prisma.payment.findMany({
     where: {
@@ -135,25 +134,18 @@ reportsRouter.get("/payment-history", requireRole(Role.ADMIN), async (req, res) 
       paidAt: { gte: fromDate, lte: toDate },
       ...(query.employeeId ? { employeeId: query.employeeId } : {}),
       ...(query.mode ? { mode: query.mode } : {}),
-      ...(query.billMonth || query.billYear
+      ...(search
         ? {
             billing: {
-              ...(query.billMonth ? { month: query.billMonth } : {}),
-              ...(query.billYear ? { year: query.billYear } : {})
-            }
-          }
-        : {}),
-      ...(query.q
-        ? {
-            billing: {
-              ...(query.billMonth ? { month: query.billMonth } : {}),
-              ...(query.billYear ? { year: query.billYear } : {}),
               customer: {
                 OR: [
-                  { firstName: { contains: query.q } },
-                  { lastName: { contains: query.q } },
-                  { phone: { contains: query.q } },
-                  { address: { contains: query.q } }
+                  { customerCode: { contains: search, mode: "insensitive" } },
+                  { firstName: { contains: search, mode: "insensitive" } },
+                  { lastName: { contains: search, mode: "insensitive" } },
+                  { phone: { contains: search, mode: "insensitive" } },
+                  { address: { contains: search, mode: "insensitive" } },
+                  { boxes: { some: { unassignedAt: null, setTopBox: { boxNumber: { contains: search, mode: "insensitive" } } } } },
+                  { boxes: { some: { unassignedAt: null, setTopBox: { pairedCardNumber: { contains: search, mode: "insensitive" } } } } }
                 ]
               }
             }

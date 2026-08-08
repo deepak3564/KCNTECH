@@ -1,7 +1,8 @@
-import { type ReactNode, useState } from "react";
+import { useState } from "react";
 import { UserCircle } from "lucide-react";
 import { SessionUser } from "../../api/client";
 import { useI18n } from "../../i18n";
+import type { ProfileToolTabs } from "../Shell";
 import { ProfileWindow } from "./ProfileWindow";
 
 export function ProfileMenu({
@@ -13,7 +14,7 @@ export function ProfileMenu({
   user: SessionUser;
   onUserChange: (user: SessionUser) => void;
   onLogout: () => void;
-  profileTools?: ReactNode;
+  profileTools?: ProfileToolTabs;
 }) {
   const [open, setOpen] = useState(false);
   const { t } = useI18n();

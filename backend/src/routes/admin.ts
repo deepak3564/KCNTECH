@@ -81,6 +81,9 @@ adminRouter.delete("/employees/:id", async (req, res) => {
 adminRouter.post("/plans", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z.object({ name: z.string().min(2), type: z.enum(["CABLE", "INTERNET"]), price: z.coerce.number().int().min(0) }).parse(req.body);
+  if (body.type === "INTERNET" && !(await isInternetEnabled(organisationId))) {
+    return res.status(400).json({ message: "Please Enable Internet System First." });
+  }
   const plan = await prisma.plan.create({ data: { ...body, organisationId } });
   res.status(201).json(plan);
 });
@@ -95,6 +98,9 @@ adminRouter.put("/plans/:id", async (req, res) => {
       isActive: z.boolean().optional()
     })
     .parse(req.body);
+  if (body.type === "INTERNET" && !(await isInternetEnabled(organisationId))) {
+    return res.status(400).json({ message: "Please Enable Internet System First." });
+  }
   const plan = await prisma.plan.update({ where: { id: req.params.id, organisationId }, data: body });
   res.json(plan);
 });
@@ -195,9 +201,23 @@ adminRouter.post("/customers", async (req, res) => {
       effectiveMonth: z.coerce.number().int().min(1).max(12).optional(),
       effectiveYear: z.coerce.number().int().optional(),
       setTopBoxId: z.string().optional(),
+      newSetTopBoxNumber: z.string().optional(),
+      newPairedCardNumber: z.string().optional(),
       notes: z.string().optional()
     })
     .parse(req.body);
+  if ((body.newSetTopBoxNumber && !body.newPairedCardNumber) || (!body.newSetTopBoxNumber && body.newPairedCardNumber)) {
+    return res.status(400).json({ message: "Please Enter Both Set Top Box Number And Paired Card Number." });
+  }
+  if (body.setTopBoxId && body.newSetTopBoxNumber) {
+    return res.status(400).json({ message: "Please Select Existing Set Top Box Or Enter New Set Top Box Details." });
+  }
+  if (!(await isInternetEnabled(organisationId))) {
+    body.internetStatus = ServiceStatus.NA;
+    body.internetPlanId = undefined;
+    body.internetStartMonth = undefined;
+    body.internetStartYear = undefined;
+  }
 
   await validateCustomerSelections(organisationId, {
     collectorId: body.collectorId,
@@ -206,27 +226,39 @@ adminRouter.post("/customers", async (req, res) => {
     setTopBoxId: body.setTopBoxId
   });
 
-  const customer = await prisma.customer.create({
-    data: {
-      organisationId,
-      customerCode: body.customerCode?.trim() || null,
-      firstName: body.firstName,
-      lastName: body.lastName,
-      phone: body.phone,
-      address: body.address,
-      collectorId: body.collectorId || null,
-      cableStatus: body.cableStatus,
-      internetStatus: body.internetStatus,
-      cablePlanId: body.cableStatus === ServiceStatus.NA ? null : body.cablePlanId || null,
-      internetPlanId: body.internetStatus === ServiceStatus.NA ? null : body.internetPlanId || null,
-      cableStartMonth: body.cableStatus === ServiceStatus.NA ? null : body.cableStartMonth || null,
-      cableStartYear: body.cableStatus === ServiceStatus.NA ? null : body.cableStartYear || null,
-      internetStartMonth: body.internetStatus === ServiceStatus.NA ? null : body.internetStartMonth || null,
-      internetStartYear: body.internetStatus === ServiceStatus.NA ? null : body.internetStartYear || null,
-      notes: body.notes,
-      boxes: body.setTopBoxId ? { create: { setTopBoxId: body.setTopBoxId, reason: "Initial assignment" } } : undefined
-    },
-    include: { cablePlan: true, internetPlan: true }
+  const customer = await prisma.$transaction(async (tx) => {
+    const newSetTopBox = body.newSetTopBoxNumber && body.newPairedCardNumber
+      ? await tx.setTopBox.create({
+          data: {
+            organisationId,
+            boxNumber: body.newSetTopBoxNumber.trim(),
+            pairedCardNumber: body.newPairedCardNumber.trim()
+          }
+        })
+      : null;
+
+    return tx.customer.create({
+      data: {
+        organisationId,
+        customerCode: body.customerCode?.trim() || null,
+        firstName: body.firstName,
+        lastName: body.lastName,
+        phone: body.phone,
+        address: body.address,
+        collectorId: body.collectorId || null,
+        cableStatus: body.cableStatus,
+        internetStatus: body.internetStatus,
+        cablePlanId: body.cableStatus === ServiceStatus.NA ? null : body.cablePlanId || null,
+        internetPlanId: body.internetStatus === ServiceStatus.NA ? null : body.internetPlanId || null,
+        cableStartMonth: body.cableStatus === ServiceStatus.NA ? null : body.cableStartMonth || null,
+        cableStartYear: body.cableStatus === ServiceStatus.NA ? null : body.cableStartYear || null,
+        internetStartMonth: body.internetStatus === ServiceStatus.NA ? null : body.internetStartMonth || null,
+        internetStartYear: body.internetStatus === ServiceStatus.NA ? null : body.internetStartYear || null,
+        notes: body.notes,
+        boxes: body.setTopBoxId || newSetTopBox ? { create: { setTopBoxId: body.setTopBoxId ?? newSetTopBox!.id, reason: "Initial assignment" } } : undefined
+      },
+      include: { cablePlan: true, internetPlan: true }
+    });
   });
   const now = new Date();
   await overrideCustomerPlanHistory({
@@ -270,6 +302,12 @@ adminRouter.put("/customers/:id", async (req, res) => {
     })
     .parse(req.body);
   const { effectiveMonth, effectiveYear, setTopBoxId, ...customerData } = body;
+  if (!(await isInternetEnabled(organisationId))) {
+    customerData.internetStatus = ServiceStatus.NA;
+    customerData.internetPlanId = null;
+    customerData.internetStartMonth = null;
+    customerData.internetStartYear = null;
+  }
   if (customerData.cableStatus === ServiceStatus.NA) {
     customerData.cablePlanId = null;
     customerData.cableStartMonth = null;
@@ -428,6 +466,14 @@ async function validateCustomerSelections(
     if (linked && linked.customerId === currentCustomerId) return;
     if (linked) throw new Error("Selected Set Top Box Is Already Linked To A Customer.");
   }
+}
+
+async function isInternetEnabled(organisationId: string) {
+  const organisation = await prisma.organisation.findUnique({
+    where: { id: organisationId },
+    select: { internetEnabled: true }
+  });
+  return organisation?.internetEnabled ?? false;
 }
 
 async function updateCustomerSetTopBox({

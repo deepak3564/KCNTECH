@@ -24,11 +24,34 @@ customersRouter.get("/cable-plans", async (req, res) => {
   res.json(plans);
 });
 
+customersRouter.get("/address-suggestions", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const query = z.object({ q: z.string().optional() }).parse(req.query);
+  const search = query.q?.trim();
+  if (!search) return res.json([]);
+
+  const rows = await prisma.customer.findMany({
+    where: {
+      organisationId,
+      deleted: false,
+      ...(req.user!.role === Role.EMPLOYEE ? { collectorId: req.user!.id } : {}),
+      address: { contains: search, mode: "insensitive" }
+    },
+    distinct: ["address"],
+    select: { address: true },
+    orderBy: { address: "asc" },
+    take: 12
+  });
+
+  res.json(rows.map((row) => row.address));
+});
+
 customersRouter.get("/", async (req, res) => {
   const organisationId = organisationScope(req);
   const query = z
     .object({
       q: z.string().optional(),
+      address: z.string().optional(),
       status: z.enum(["ACTIVE", "INACTIVE"]).optional(),
       paymentStatus: z.enum(["PENDING", "PARTIAL", "PAID"]).optional(),
       month: z.coerce.number().int().min(1).max(12).optional(),
@@ -41,6 +64,7 @@ customersRouter.get("/", async (req, res) => {
   const month = query.month ?? now.getMonth() + 1;
   const year = query.year ?? now.getFullYear();
   const search = query.q?.trim();
+  const addressSearch = query.address?.trim();
   await ensureMonthlyBillings(organisationId, month, year);
 
   const customers = await prisma.customer.findMany({
@@ -50,6 +74,7 @@ customersRouter.get("/", async (req, res) => {
       ...(req.user!.role === Role.EMPLOYEE ? { collectorId: req.user!.id } : {}),
       ...(query.collectorId ? { collectorId: query.collectorId } : {}),
       ...(query.status ? { status: query.status } : {}),
+      ...(addressSearch ? { address: { contains: addressSearch, mode: "insensitive" } } : {}),
       ...(search
         ? {
             OR: [
