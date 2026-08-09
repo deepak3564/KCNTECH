@@ -87,9 +87,11 @@ export function EditableRow({
         <span>{meta}</span>
       </div>
       <div className="row-actions">
-        <span className="pill">{t(badge)}</span>
-        <button className="small-button" onClick={() => setEditing(true)} title={t("Edit")}><Edit2 size={15} /></button>
-        {deletePath && <button className="small-button delete-icon-button" onClick={softDelete} title={t("Delete")}><Trash2 size={15} /></button>}
+        <span className="pill row-badge">{t(badge)}</span>
+        <span className="row-action-buttons">
+          <button className="small-button" onClick={() => setEditing(true)} title={t("Edit")}><Edit2 size={15} /></button>
+          {deletePath && <button className="small-button delete-icon-button" onClick={softDelete} title={t("Delete")}><Trash2 size={15} /></button>}
+        </span>
       </div>
       {error && <p className="error inline-error">{t(error)}</p>}
     </div>
