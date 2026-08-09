@@ -696,9 +696,9 @@ input, select {
 .master-row {
   min-height: 58px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) max-content;
-  align-items: center;
-  gap: 10px;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   border-top: 1px solid #edf2f1;
   padding-top: 8px;
 }
@@ -733,14 +733,27 @@ input, select {
   color: #176b5d;
 }
 .row-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.row-badge {
+  justify-self: start;
+  max-width: 100%;
+}
+.row-action-buttons {
   display: inline-flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
-  min-width: max-content;
+  width: 74px;
+  min-width: 74px;
 }
 .small-button {
   width: 34px;
+  min-width: 34px;
   min-height: 34px;
   padding: 0;
 }
@@ -1207,7 +1220,7 @@ label,
 .topbar span,
 .metric span,
 .customer-card span,
-.master-row div span,
+.master-row-main span,
 .empty,
 .detail-grid span,
 .history,
@@ -1301,13 +1314,9 @@ h3,
   .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .collection-summary-metrics, .collection-summary-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
   .period-row, .tool-row, .inline-form, .grid-form, .ledger-row, .payment-report-filters, .advance-period-row, .customer-edit-form, .add-form-fields { width: 100%; overflow: hidden; }
   .period-row > *, .tool-row > *, .inline-form > *, .grid-form > *, .ledger-row > *, .payment-report-filters > *, .advance-period-row > *, .customer-edit-form > *, .add-form-fields > * { min-width: 0; width: 100%; }
-  .master-row { grid-template-columns: 1fr; align-items: start; }
-  .row-actions { justify-content: flex-start; }
   input[type="date"], input[type="number"], select { width: 100%; max-width: 100%; }
   .form-heading { grid-column: auto; }
   .customer-card { align-items: start; display: grid; gap: 12px; }
-  .master-row { align-items: start; }
-  .row-actions { align-items: flex-end; }
   .status-stack { justify-content: flex-start; max-width: none; }
   .detail-grid { grid-template-columns: 1fr; }
   .profile-body { grid-template-columns: 1fr; }
