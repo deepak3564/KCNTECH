@@ -14,6 +14,62 @@ paymentsRouter.use(requireAuth, requireRole(Role.ADMIN, Role.EMPLOYEE));
 
 const periodSchema = z.object({ month: z.coerce.number().int().min(1).max(12), year: z.coerce.number().int() });
 
+paymentsRouter.post("/reset", requireRole(Role.ADMIN), async (req, res) => {
+  const organisationId = organisationScope(req);
+  const body = z.object({
+    customerId: z.string(),
+    month: z.coerce.number().int().min(1).max(12),
+    year: z.coerce.number().int()
+  }).parse(req.body);
+
+  const billing = await prisma.monthlyBilling.findFirst({
+    where: {
+      organisationId,
+      customerId: body.customerId,
+      month: body.month,
+      year: body.year
+    },
+    include: {
+      customer: true,
+      payments: true
+    }
+  });
+
+  if (!billing || billing.customer.deleted) {
+    return res.status(404).json({ message: "Billing Record Not Found." });
+  }
+
+  const resetAmount = billing.payments.reduce((sum, payment) => sum + payment.amount, 0);
+  if (resetAmount <= 0 && billing.paidAmount <= 0) {
+    return res.status(400).json({ message: "No Payment Found To Reset For Selected Month." });
+  }
+
+  await prisma.$transaction([
+    prisma.payment.deleteMany({ where: { billingId: billing.id, organisationId } }),
+    prisma.monthlyBilling.update({
+      where: { id: billing.id },
+      data: {
+        paidAmount: 0,
+        status: BillingStatus.PENDING
+      }
+    }),
+    prisma.customer.update({
+      where: { id: billing.customerId },
+      data: { updatedAt: new Date() }
+    }),
+    prisma.customerHistory.create({
+      data: {
+        organisationId,
+        customerId: billing.customerId,
+        userId: req.user!.id,
+        comment: `Payment reset for ${body.month}/${body.year}. Reset amount: ${resetAmount}. Bill marked pending.`
+      }
+    })
+  ]);
+
+  res.json({ message: "Payment Reset Successfully.", resetAmount });
+});
+
 paymentsRouter.post("/preview", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z.object({

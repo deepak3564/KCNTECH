@@ -11,6 +11,10 @@ export function Login({ onLogin }: { onLogin: (user: SessionUser) => void }) {
   async function submit(event: React.FormEvent) {
     event.preventDefault();
     setError("");
+    if (!email.trim() || !password) {
+      setError("Please Enter Email And Password.");
+      return;
+    }
     try {
       const result = await api<{ token: string; user: SessionUser }>("/auth/login", {
         method: "POST",

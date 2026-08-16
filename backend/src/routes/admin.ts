@@ -68,7 +68,7 @@ adminRouter.put("/employees/:id", async (req, res) => {
       name: z.string().min(2).optional(),
       email: z.string().email().optional(),
       phone: z.string().nullable().optional(),
-      password: z.string().min(8).optional(),
+      password: z.preprocess((value) => typeof value === "string" && value.trim() === "" ? undefined : value, z.string().min(8).optional()),
       isActive: z.boolean().optional()
     })
     .parse(req.body);
