@@ -275,6 +275,10 @@ function AdminCustomerActions({
 }) {
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState("");
+  const [resetMonth, setResetMonth] = useState(String(month));
+  const [resetYear, setResetYear] = useState(String(year));
+  const [resetError, setResetError] = useState("");
+  const [resetMessage, setResetMessage] = useState("");
   const { t } = useI18n();
   const employeeOptions = employees.filter((employee) => employee.isActive || employee.id === (customer.collectorId ?? customer.collector?.id));
   const cablePlanOptions = plans.filter((plan) => plan.type === "CABLE" && (plan.isActive !== false || plan.id === customer.cablePlanId));
@@ -303,6 +307,8 @@ function AdminCustomerActions({
     setTopBoxId: currentBoxId,
     notes: customer.notes ?? ""
   });
+  const selectedResetBilling = customer.billings.find((billing) => billing.month === Number(resetMonth) && billing.year === Number(resetYear));
+  const canResetPayment = (selectedResetBilling?.paidAmount ?? 0) > 0 || (selectedResetBilling?.payments.length ?? 0) > 0;
 
   async function toggleStatus() {
     setError("");
@@ -356,6 +362,28 @@ function AdminCustomerActions({
     }
   }
 
+  async function resetPayment(event: React.FormEvent) {
+    event.preventDefault();
+    setResetError("");
+    setResetMessage("");
+    if (!canResetPayment) {
+      setResetError("No Payment Found To Reset For Selected Month.");
+      return;
+    }
+    if (!confirm(t("Are You Sure You Want To Reset This Month Payment?"))) return;
+    try {
+      await api("/payments/reset", {
+        method: "POST",
+        body: JSON.stringify({ customerId: customer.id, month: resetMonth, year: resetYear })
+      });
+      setResetMessage("Payment Reset Successfully.");
+      await onRefresh();
+      onClose();
+    } catch (err) {
+      setResetError(err instanceof Error ? err.message : "Could Not Reset Payment");
+    }
+  }
+
   return (
     <section className="admin-actions">
       <div className="edit-actions">
@@ -364,6 +392,17 @@ function AdminCustomerActions({
       </div>
       <button className="delete-button" onClick={deleteCustomer}>{t("Delete Customer")}</button>
       {error && <p className="error inline-error">{t(error)}</p>}
+      <form className="payment-form reset-payment-form" onSubmit={resetPayment}>
+        <h3>{t("Reset Monthly Payment")}</h3>
+        <div className="advance-period-row">
+          <MonthSelect label={t("Bill Month")} value={resetMonth} onChange={setResetMonth} />
+          <YearInput label={t("Bill Year")} value={resetYear} onChange={setResetYear} />
+        </div>
+        <div className="history">{t("Collected")}<strong>{money(selectedResetBilling?.paidAmount ?? 0)}</strong></div>
+        {resetError && <p className="error inline-error">{t(resetError)}</p>}
+        {resetMessage && <p className="success">{t(resetMessage)}</p>}
+        <button className="delete-button" disabled={!canResetPayment}>{t("Reset Payment")}</button>
+      </form>
       {editing && (
         <form className="customer-edit-form" onSubmit={save}>
           <label>{t("Customer ID")}<input value={values.customerCode} onChange={(e) => setValues({ ...values, customerCode: e.target.value })} /></label>

@@ -15,10 +15,31 @@ export function SetupLists({ plans, employees, boxes, reload }: { plans: Plan[];
   );
 }
 
-function EmployeeList({ employees, reload }: { employees: Employee[]; reload: () => void }) {
+type ListSubtab = "employees" | "plans" | "setTopBoxes";
+
+export function SetupListTabs({ plans, employees, boxes, reload }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; reload: () => void }) {
+  const [tab, setTab] = useState<ListSubtab>("employees");
   const { t } = useI18n();
   return (
-    <MasterList title={`${t("Employees")} (${employees.length})`} empty="No Employees Added Yet.">
+    <section className="setup-list-tabs">
+      <nav className="setup-list-tab-nav" aria-label={t("Lists")}>
+        <button type="button" className={tab === "employees" ? "active-tab" : ""} onClick={() => setTab("employees")}>{t("Employees")}</button>
+        <button type="button" className={tab === "plans" ? "active-tab" : ""} onClick={() => setTab("plans")}>{t("Plans")}</button>
+        <button type="button" className={tab === "setTopBoxes" ? "active-tab" : ""} onClick={() => setTab("setTopBoxes")}>{t("Set Top Boxes")}</button>
+      </nav>
+      <div className="setup-list-tab-panel">
+        {tab === "employees" && <EmployeeList employees={employees} reload={reload} defaultOpen />}
+        {tab === "plans" && <PlanList plans={plans} reload={reload} defaultOpen />}
+        {tab === "setTopBoxes" && <BoxList boxes={boxes} reload={reload} defaultOpen />}
+      </div>
+    </section>
+  );
+}
+
+export function EmployeeList({ employees, reload, defaultOpen = false }: { employees: Employee[]; reload: () => void; defaultOpen?: boolean }) {
+  const { t } = useI18n();
+  return (
+    <MasterList title={`${t("Employees")} (${employees.length})`} empty="No Employees Added Yet." defaultOpen={defaultOpen}>
       {employees.map((employee) => (
         <EditableRow
           key={employee.id}
@@ -42,10 +63,10 @@ function EmployeeList({ employees, reload }: { employees: Employee[]; reload: ()
   );
 }
 
-function PlanList({ plans, reload }: { plans: Plan[]; reload: () => void }) {
+export function PlanList({ plans, reload, defaultOpen = false }: { plans: Plan[]; reload: () => void; defaultOpen?: boolean }) {
   const { t } = useI18n();
   return (
-    <MasterList title={`${t("Plans")} (${plans.length})`} empty="No Plans Added Yet.">
+    <MasterList title={`${t("Plans")} (${plans.length})`} empty="No Plans Added Yet." defaultOpen={defaultOpen}>
       {plans.map((plan) => (
         <EditableRow
           key={plan.id}
@@ -68,7 +89,7 @@ function PlanList({ plans, reload }: { plans: Plan[]; reload: () => void }) {
   );
 }
 
-function BoxList({ boxes, reload }: { boxes: Box[]; reload: () => void }) {
+export function BoxList({ boxes, reload, defaultOpen = false }: { boxes: Box[]; reload: () => void; defaultOpen?: boolean }) {
   const { t } = useI18n();
   async function unlinkBox(box: Box) {
     if (!confirm(t("Are You Sure You Want To Unlink This Set Top Box?"))) return;
@@ -76,7 +97,7 @@ function BoxList({ boxes, reload }: { boxes: Box[]; reload: () => void }) {
     reload();
   }
   return (
-    <MasterList title={`${t("Set Top Boxes")} (${boxes.length})`} empty="No Set Top Boxes Added Yet.">
+    <MasterList title={`${t("Set Top Boxes")} (${boxes.length})`} empty="No Set Top Boxes Added Yet." defaultOpen={defaultOpen}>
       {boxes.map((box) => {
         const linkedCustomer = box.assignments?.[0]?.customer;
         const linkedCustomerName = linkedCustomer ? `${linkedCustomer.firstName} ${linkedCustomer.lastName ?? ""}`.trim() : "";
@@ -105,8 +126,8 @@ function BoxList({ boxes, reload }: { boxes: Box[]; reload: () => void }) {
   );
 }
 
-function MasterList({ title, empty, children }: { title: string; empty: string; children: React.ReactNode }) {
-  const [open, setOpen] = useState(false);
+function MasterList({ title, empty, defaultOpen = false, children }: { title: string; empty: string; defaultOpen?: boolean; children: React.ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   const hasRows = React.Children.count(children) > 0;
   const { t } = useI18n();
   return (

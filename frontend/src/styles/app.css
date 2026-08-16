@@ -659,6 +659,36 @@ input, select {
   grid-template-columns: repeat(3, 1fr);
   gap: 10px;
 }
+.setup-list-tabs {
+  display: grid;
+  grid-template-columns: 190px minmax(0, 1fr);
+  align-items: start;
+  gap: 14px;
+  min-width: 0;
+}
+.setup-list-tab-nav {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+}
+.setup-list-tab-nav button {
+  min-height: 38px;
+  width: 100%;
+  justify-content: flex-start;
+  border: 1px solid #cfe0dc;
+  background: #ffffff;
+  color: #43514f;
+}
+.setup-list-tab-nav .active-tab {
+  border-color: #176b5d;
+  background: #e8f5ef;
+  color: #176b5d;
+}
+.setup-list-tab-panel {
+  min-width: 0;
+}
 .master-list {
   display: grid;
   align-content: start;
@@ -692,6 +722,15 @@ input, select {
   align-content: start;
   gap: 8px;
   padding-top: 4px;
+}
+.full-list-panel .master-list {
+  min-height: min(620px, 72vh);
+}
+.full-list-panel .master-content.open {
+  max-height: none;
+}
+.full-list-panel .master-content-inner {
+  max-height: min(540px, 62vh);
 }
 .master-row {
   min-height: 58px;
@@ -1176,6 +1215,18 @@ input, select {
   color: var(--kcn-lime);
 }
 
+:root[data-theme="dark"] .setup-list-tab-nav button {
+  background: var(--kcn-surface);
+  border-color: var(--kcn-border);
+  color: var(--kcn-muted);
+}
+
+:root[data-theme="dark"] .setup-list-tab-nav .active-tab {
+  background: #182117;
+  border-color: var(--kcn-lime);
+  color: var(--kcn-lime);
+}
+
 :root[data-theme="dark"] .pill {
   background: #252d25;
   color: var(--kcn-muted);
@@ -1311,7 +1362,7 @@ h3,
 @media (max-width: 760px) {
   .content { padding: 12px; }
   .metrics { grid-template-columns: repeat(2, 1fr); }
-  .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .collection-summary-metrics, .collection-summary-row, .advance-period-row, .setup-grid, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
+  .period-row, .tool-row, .quick-actions, .inline-form, .grid-form, .ledger-row, .ledger-metrics, .handover-history-row, .payment-report-filters, .payment-mode-metrics, .payment-report-row, .collection-summary-metrics, .collection-summary-row, .advance-period-row, .setup-grid, .setup-list-tabs, .customer-edit-form, .add-form-fields, .add-form-fields.compact-fields { grid-template-columns: 1fr; }
   .period-row, .tool-row, .inline-form, .grid-form, .ledger-row, .payment-report-filters, .advance-period-row, .customer-edit-form, .add-form-fields { width: 100%; overflow: hidden; }
   .period-row > *, .tool-row > *, .inline-form > *, .grid-form > *, .ledger-row > *, .payment-report-filters > *, .advance-period-row > *, .customer-edit-form > *, .add-form-fields > * { min-width: 0; width: 100%; }
   input[type="date"], input[type="number"], select { width: 100%; max-width: 100%; }

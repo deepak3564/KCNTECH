@@ -8,7 +8,10 @@ import { Role } from "@prisma/client";
 export const authRouter = Router();
 
 authRouter.post("/login", async (req, res) => {
-  const body = z.object({ email: z.string().email(), password: z.string().min(1) }).parse(req.body);
+  const body = z.object({
+    email: z.string().email("Please Enter A Valid Email Address."),
+    password: z.string().min(1, "Please Enter Email And Password.")
+  }).parse(req.body);
   const user = await prisma.user.findUnique({ where: { email: body.email }, include: { organisation: true } });
 
   if (!user || user.deleted || !user.isActive || !(await verifyPassword(body.password, user.passwordHash))) {
@@ -98,7 +101,10 @@ authRouter.put("/internet-settings", requireAuth, requireRole(Role.ADMIN), async
 });
 
 authRouter.post("/change-password", requireAuth, async (req, res) => {
-  const body = z.object({ currentPassword: z.string(), newPassword: z.string().min(8) }).parse(req.body);
+  const body = z.object({
+    currentPassword: z.string().min(1, "Current Password Is Required."),
+    newPassword: z.string().min(8, "Password Must Be At Least 8 Characters.")
+  }).parse(req.body);
   const user = await prisma.user.findUnique({ where: { id: req.user!.id } });
   if (!user || !(await verifyPassword(body.currentPassword, user.passwordHash))) {
     return res.status(400).json({ message: "Current password is incorrect." });
