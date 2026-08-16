@@ -36,6 +36,10 @@ function SimpleCreate({ path, fields, defaults = {}, internetEnabled = true, onC
       setError("Please Enter A Valid Email Address.");
       return;
     }
+    if (fields.includes("password") && (values.password ?? "").trim().length < 8) {
+      setError("Password Must Be At Least 8 Characters.");
+      return;
+    }
     try {
       const payload = Object.fromEntries(Object.entries(values).filter(([key, value]) => key !== "password" || value.trim() !== ""));
       await api(path, { method: "POST", body: JSON.stringify(payload) });

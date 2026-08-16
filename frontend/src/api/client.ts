@@ -98,7 +98,7 @@ function readableErrorMessage(data: unknown) {
   if (lower.includes("invalid email") || lower.includes("valid email")) return "Please Enter A Valid Email Address.";
   if (lower.includes("unique constraint") || lower.includes("already exists")) return "This Record Already Exists. Please Check The Details.";
   if (lower.includes("invalid email or password")) return "Invalid Email Or Password.";
-  if (lower.includes("password") && lower.includes("8")) return "Password Must Be At Least 8 Characters.";
+  if (lower.includes("password") && (lower.includes("at least 8") || lower.includes("minimum 8") || lower.includes("8 characters"))) return "Password Must Be At Least 8 Characters.";
   if ((lower.includes("payment amount") || lower.includes("collection amount")) && lower.includes("pending amount")) return "Collection Amount Cannot Be Greater Than Pending Amount.";
   if (lower.includes("customer not found")) return "Customer Not Found.";
   if (lower.includes("organisation") && lower.includes("unique")) return "Organisation Name Already Exists.";
