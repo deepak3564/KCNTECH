@@ -30,7 +30,8 @@ export function CustomerDrawer({
   onClose: () => void;
   onRefresh: () => void | Promise<void>;
 }) {
-  const bill = customer.billings[0];
+  const billings = customer.billings ?? [];
+  const bill = billings.find((item) => item.month === month && item.year === year) ?? billings[0];
   const pendingAmount = Math.max((bill?.totalAmount ?? 0) - (bill?.paidAmount ?? 0), 0);
   const hasPendingAmount = pendingAmount > 0;
   const [amount, setAmount] = useState(String(pendingAmount));
@@ -38,6 +39,8 @@ export function CustomerDrawer({
   const [proof, setProof] = useState<File | null>(null);
   const [paymentError, setPaymentError] = useState("");
   const [employeeCablePlanId, setEmployeeCablePlanId] = useState(customer.cablePlanId ?? "");
+  const [employeeCablePlanMonth, setEmployeeCablePlanMonth] = useState(month);
+  const [employeeCablePlanYear, setEmployeeCablePlanYear] = useState(year);
   const [employeeCablePlanMessage, setEmployeeCablePlanMessage] = useState("");
   const [employeeCablePlanError, setEmployeeCablePlanError] = useState("");
   const [advanceOpen, setAdvanceOpen] = useState(false);
@@ -59,6 +62,11 @@ export function CustomerDrawer({
   useEffect(() => {
     setEmployeeCablePlanId(customer.cablePlanId ?? "");
   }, [customer.cablePlanId]);
+
+  useEffect(() => {
+    setEmployeeCablePlanMonth(month);
+    setEmployeeCablePlanYear(year);
+  }, [month, year]);
 
   async function collect(event: React.FormEvent) {
     event.preventDefault();
@@ -87,7 +95,7 @@ export function CustomerDrawer({
     try {
       await api(`/customers/${customer.id}/cable-plan`, {
         method: "PUT",
-        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month, year })
+        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month: employeeCablePlanMonth, year: employeeCablePlanYear })
       });
       setEmployeeCablePlanMessage("Cable Plan Updated.");
       await onRefresh();
@@ -165,6 +173,10 @@ export function CustomerDrawer({
       {user.role === "EMPLOYEE" && customer.cableStatus !== "NA" && (
         <form className="payment-form" onSubmit={updateEmployeeCablePlan}>
           <h3>{t("Update Cable Plan")}</h3>
+          <div className="advance-period-row">
+            <MonthSelect label={t("Bill Month")} value={String(employeeCablePlanMonth)} onChange={(value) => setEmployeeCablePlanMonth(Number(value))} />
+            <YearInput label={t("Bill Year")} value={String(employeeCablePlanYear)} onChange={(value) => setEmployeeCablePlanYear(Number(value))} />
+          </div>
           <label>
             {t("Cable Plan")}
             <select value={employeeCablePlanId} onChange={(event) => setEmployeeCablePlanId(event.target.value)}>
@@ -211,10 +223,10 @@ export function CustomerDrawer({
       </section>
       <section>
         <h3>{t("Payment History")}</h3>
-        {customer.billings.map((item) => (
+        {billings.map((item) => (
           <div className="payment-history-item" key={item.id}>
             <div className="history">{item.month}/{item.year}<strong>{t(item.status[0] + item.status.slice(1).toLowerCase())} · {money(item.paidAmount)} / {money(item.totalAmount)}</strong></div>
-            {item.payments.map((payment) => (
+            {(item.payments ?? []).map((payment) => (
               <div className="payment-proof-row" key={`${item.id}-${payment.paidAt}-${payment.amount}`}>
                 <span>{new Date(payment.paidAt).toLocaleDateString()} · {t(payment.mode)} · {money(payment.amount)}</span>
                 {payment.proofImageUrl && (
@@ -307,8 +319,8 @@ function AdminCustomerActions({
     setTopBoxId: currentBoxId,
     notes: customer.notes ?? ""
   });
-  const selectedResetBilling = customer.billings.find((billing) => billing.month === Number(resetMonth) && billing.year === Number(resetYear));
-  const canResetPayment = (selectedResetBilling?.paidAmount ?? 0) > 0 || (selectedResetBilling?.payments.length ?? 0) > 0;
+  const selectedResetBilling = (customer.billings ?? []).find((billing) => billing.month === Number(resetMonth) && billing.year === Number(resetYear));
+  const canResetPayment = (selectedResetBilling?.paidAmount ?? 0) > 0 || (selectedResetBilling?.payments?.length ?? 0) > 0;
 
   async function toggleStatus() {
     setError("");
