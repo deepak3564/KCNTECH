@@ -44,7 +44,7 @@ export type Customer = {
     totalAmount: number;
     paidAmount: number;
     status: "PENDING" | "PARTIAL" | "PAID";
-    payments: Array<{ amount: number; mode: string; paidAt: string; proofImageUrl?: string | null }>;
+    payments?: Array<{ amount: number; mode: string; paidAt: string; proofImageUrl?: string | null }>;
   }>;
 };
 
