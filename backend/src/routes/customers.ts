@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { BillingStatus, Plan, Role } from "@prisma/client";
+import { BillingStatus, Plan, Role, ServiceStatus } from "@prisma/client";
 import { z } from "zod";
 import { ensureMonthlyBillings, recalculateBillingStatus } from "../lib/billing.js";
 import { addCustomerHistory } from "../lib/customerHistory.js";
@@ -242,11 +242,12 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z
     .object({
-      cablePlanId: z.string(),
+      cablePlanId: z.preprocess((value) => value === "" ? null : value, z.string().nullable()),
       month: z.coerce.number().int().min(1).max(12),
       year: z.coerce.number().int()
     })
     .parse(req.body);
+  const cablePlanId = body.cablePlanId;
 
   const customer = await prisma.customer.findFirst({
     where: {
@@ -268,21 +269,23 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
     }
   }
 
-  const cablePlan = await prisma.plan.findFirst({
-    where: { id: body.cablePlanId, organisationId, type: "CABLE", isActive: true, deleted: false }
-  });
-  if (!cablePlan) return res.status(400).json({ message: "Selected Cable Plan Is Inactive Or Not Available." });
+  const cablePlan = cablePlanId
+    ? await prisma.plan.findFirst({
+        where: { id: cablePlanId, organisationId, type: "CABLE", isActive: true, deleted: false }
+      })
+    : null;
+  if (cablePlanId && !cablePlan) return res.status(400).json({ message: "Selected Cable Plan Is Inactive Or Not Available." });
   const selectedPeriodStartsEarlier = isBeforePeriod(body.month, body.year, customer.cableStartMonth, customer.cableStartYear);
-  const cableStartMonth = !customer.cableStartMonth || selectedPeriodStartsEarlier ? body.month : customer.cableStartMonth;
-  const cableStartYear = !customer.cableStartYear || selectedPeriodStartsEarlier ? body.year : customer.cableStartYear;
+  const cableStartMonth = cablePlan && (!customer.cableStartMonth || selectedPeriodStartsEarlier) ? body.month : customer.cableStartMonth;
+  const cableStartYear = cablePlan && (!customer.cableStartYear || selectedPeriodStartsEarlier) ? body.year : customer.cableStartYear;
 
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
-      cableStatus: "ACTIVE",
-      cablePlanId: cablePlan.id,
-      cableStartMonth,
-      cableStartYear
+      cableStatus: cablePlan ? ServiceStatus.ACTIVE : ServiceStatus.NA,
+      cablePlanId: cablePlan?.id ?? null,
+      cableStartMonth: cablePlan ? cableStartMonth : null,
+      cableStartYear: cablePlan ? cableStartYear : null
     },
     include: {
       cablePlan: true,
@@ -301,19 +304,23 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
     where: { customerId_month_year: { customerId: customer.id, month: body.month, year: body.year } }
   });
   if (billing) await recalculateBillingStatus(billing.id);
-  await repairFutureEmptyCableBillings({
-    organisationId,
-    customerId: customer.id,
-    fromMonth: body.month,
-    fromYear: body.year,
-    cablePlan
-  });
+  if (cablePlan) {
+    await repairFutureEmptyCableBillings({
+      organisationId,
+      customerId: customer.id,
+      fromMonth: body.month,
+      fromYear: body.year,
+      cablePlan
+    });
+  }
 
   await addCustomerHistory({
     organisationId,
     customerId: customer.id,
     userId: req.user!.id,
-    comment: `Cable plan updated to ${cablePlan.name} for ${body.month}/${body.year}.`
+    comment: cablePlan
+      ? `Cable plan updated to ${cablePlan.name} for ${body.month}/${body.year}.`
+      : `Cable plan updated to NA for ${body.month}/${body.year}.`
   });
 
   res.json(updated);
