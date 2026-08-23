@@ -161,5 +161,18 @@ function MonthSelect({ label, value, onChange }: { label: string; value?: string
 }
 
 function YearInput({ label, value, onChange }: { label: string; value?: string; onChange: (value: string) => void }) {
-  return <label>{label}<input type="number" value={value ?? ""} onChange={(event) => onChange(event.target.value)} /></label>;
+  return (
+    <label>{label}<select value={value ?? ""} onChange={(event) => onChange(event.target.value)}>
+      {yearOptions(value).map((year) => <option key={year} value={year}>{year}</option>)}
+    </select></label>
+  );
+}
+
+function yearOptions(value?: string) {
+  const currentYear = new Date().getFullYear();
+  const years = new Set<number>();
+  for (let year = currentYear - 1; year <= currentYear + 5; year += 1) years.add(year);
+  const selectedYear = Number(value);
+  if (Number.isInteger(selectedYear) && selectedYear > 1900) years.add(selectedYear);
+  return Array.from(years).sort((a, b) => a - b);
 }

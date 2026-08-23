@@ -11,7 +11,7 @@ import { Workspace } from "./pages/Workspace";
 export function App() {
   const [user, setUser] = useState<SessionUser | null>(getSavedUser());
   const { setLanguage, t } = useI18n();
-  const { isLoading: isApiLoading, progress: apiProgress } = useApiLoading();
+  const { isLoading: isApiLoading } = useApiLoading();
   const handleLogout = useCallback(() => logout(setUser), []);
 
   const { secondsRemaining, staySignedIn } = useSessionTimeout(Boolean(user), handleLogout);
@@ -30,15 +30,7 @@ export function App() {
       {isApiLoading && (
         <div className="api-loading-backdrop" role="status" aria-live="polite">
           <div className="api-loading">
-            <span className="api-loader-mark">
-              <span />
-              <span />
-              <span />
-            </span>
-            <strong>{apiProgress}%</strong>
-            <div className="api-progress-track">
-              <span style={{ width: `${apiProgress}%` }} />
-            </div>
+            <span className="api-loader-mark" />
             <div>
               <strong>{t("Please Wait")}</strong>
               <small>{t("Syncing Latest Business Data")}</small>

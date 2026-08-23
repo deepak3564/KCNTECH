@@ -63,6 +63,7 @@ reportsRouter.get("/employee-ledger", async (req, res) => {
 
   const employeeId = req.user!.role === Role.EMPLOYEE ? req.user!.id : query.employeeId;
   if (!employeeId) return res.status(400).json({ message: "Employee is required." });
+  if (query.toDate < query.fromDate) return res.status(400).json({ message: "To Date Cannot Be Earlier Than From Date." });
   const fromDate = startOfDay(query.fromDate);
   const toDate = endOfDay(query.toDate);
 
@@ -252,6 +253,7 @@ reportsRouter.get("/handover-history", requireRole(Role.ADMIN), async (req, res)
       toDate: z.coerce.date()
     })
     .parse(req.query);
+  if (query.toDate < query.fromDate) return res.status(400).json({ message: "To Date Cannot Be Earlier Than From Date." });
   const fromDate = startOfDay(query.fromDate);
   const toDate = endOfDay(query.toDate);
 
@@ -279,6 +281,7 @@ reportsRouter.get("/payment-history", requireRole(Role.ADMIN), async (req, res) 
       toDate: z.coerce.date()
     })
     .parse(req.query);
+  if (query.toDate < query.fromDate) return res.status(400).json({ message: "To Date Cannot Be Earlier Than From Date." });
   const fromDate = startOfDay(query.fromDate);
   const toDate = endOfDay(query.toDate);
   const search = query.q?.trim();

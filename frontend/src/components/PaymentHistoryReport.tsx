@@ -55,6 +55,10 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
 
   async function loadHistory() {
     setError("");
+    if (!isValidDateRange(fromDate, toDate)) {
+      setError("To Date Cannot Be Earlier Than From Date.");
+      return null;
+    }
     const nextHistory = await api<PaymentHistoryResponse>(`/reports/payment-history?${paymentHistoryParams().toString()}`);
     setHistory(nextHistory);
     return nextHistory;
@@ -103,8 +107,8 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
     <section className="admin-panel payment-report-panel">
       <h2>{t("Payment History")}</h2>
       <div className="payment-report-filters">
-        <label>{t("From")}<input type="date" value={fromDate} onChange={(event) => setFromDate(event.target.value)} /></label>
-        <label>{t("To")}<input type="date" value={toDate} onChange={(event) => setToDate(event.target.value)} /></label>
+        <label>{t("From")}<input type="date" value={fromDate} max={toDate} onChange={(event) => setFromDate(event.target.value)} /></label>
+        <label>{t("To")}<input type="date" value={toDate} min={fromDate} onChange={(event) => setToDate(event.target.value)} /></label>
         <label>{t("Employee")}<select value={employeeId} onChange={(event) => setEmployeeId(event.target.value)}><option value="">{t("All Employees")}</option>{employees.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         <label>{t("Mode")}<select value={mode} onChange={(event) => setMode(event.target.value)}><option value="">{t("All Modes")}</option><option value="CASH">{t("Cash")}</option><option value="ADMIN_UPI">{t("Admin UPI")}</option><option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
         <label className="search"><Search size={16} /><input placeholder={t("Search Customer ID, Name, STB, Card")} value={query} onChange={(event) => setQuery(event.target.value)} /></label>
@@ -143,6 +147,10 @@ export function PaymentHistoryReport({ employees, organisationName }: { employee
 
 function customerName(customer: { firstName: string; lastName?: string | null }) {
   return `${customer.firstName} ${customer.lastName ?? ""}`.trim();
+}
+
+function isValidDateRange(fromDate: string, toDate: string) {
+  return !fromDate || !toDate || fromDate <= toDate;
 }
 
 function paymentHistoryPdfHtml({

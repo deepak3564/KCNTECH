@@ -198,3 +198,56 @@ This starter is intentionally complete enough to run and extend, but before char
 - [Prisma Render deployment docs](https://www.prisma.io/docs/orm/prisma-client/deployment/traditional/deploy-to-render)
 - [Prisma migrate deploy docs](https://www.prisma.io/docs/cli/migrate/deploy)
 - [Vercel Vite deployment docs](https://vercel.com/docs/frameworks/frontend/vite)
+
+## Automated API E2E Testing
+
+Run this after starting the backend against a local or dedicated test database:
+
+```bash
+npm run test:e2e:api
+```
+
+The script covers the main business flow with generated test data:
+
+- Super admin login and organisation/admin creation, when super admin credentials are supplied.
+- Admin login and temporary password change.
+- Internet settings.
+- Employee create, password update, and employee login.
+- Cable plan, internet plan, set-top box, customer creation, and STB assignment.
+- Monthly bill generation.
+- Customer search and employee assigned-customer visibility.
+- Plan update before collection.
+- Payment collection, payment history, employee ledger, handover, reset payment.
+- Customer history and plan history.
+- Invalid date range validation.
+- Soft-delete cleanup for test customer, employee, plans, and STB.
+
+Use one of these credential setups:
+
+```bash
+# Option 1: full SaaS flow, creates a new test organisation
+E2E_SUPER_ADMIN_EMAIL="super-admin@example.com" \
+E2E_SUPER_ADMIN_PASSWORD="your-password" \
+npm run test:e2e:api
+```
+
+```bash
+# Option 2: run inside an existing test organisation
+E2E_ADMIN_EMAIL="admin@example.com" \
+E2E_ADMIN_PASSWORD="your-password" \
+npm run test:e2e:api
+```
+
+To target a non-default backend URL:
+
+```bash
+E2E_API_URL="http://localhost:4000" npm run test:e2e:api
+```
+
+The script refuses to run against URLs that look like production unless this is explicitly set:
+
+```bash
+ALLOW_PRODUCTION_E2E=true
+```
+
+Use that only for a dedicated test deployment, never for real production customer data.
