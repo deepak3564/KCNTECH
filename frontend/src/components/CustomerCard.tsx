@@ -5,6 +5,7 @@ import { Customer } from "../types";
 export function CustomerCard({ customer, internetEnabled, onOpen }: { customer: Customer; internetEnabled: boolean; onOpen: () => void }) {
   const bill = customer.billings[0];
   const { t } = useI18n();
+  const billingLabel = bill ? customerBillingLabel(bill, t) : t("No Bill");
   return (
     <button className="customer-card" onClick={onOpen}>
       <div>
@@ -15,8 +16,16 @@ export function CustomerCard({ customer, internetEnabled, onOpen }: { customer: 
       <div className="status-stack">
         <span className={`pill ${customer.cableStatus.toLowerCase()}`}>{t(`Cable ${customer.cableStatus}`)}</span>
         {internetEnabled && <span className={`pill ${customer.internetStatus.toLowerCase()}`}>{t(`Internet ${customer.internetStatus}`)}</span>}
-        <span className={`pill ${bill?.status.toLowerCase() ?? "pending"}`}>{bill ? `${t(bill.status[0] + bill.status.slice(1).toLowerCase())} · ${money(bill.totalAmount - bill.paidAmount)}` : t("No Bill")}</span>
+        <span className={`pill ${bill?.status.toLowerCase() ?? "pending"}`}>{billingLabel}</span>
       </div>
     </button>
   );
+}
+
+function customerBillingLabel(bill: Customer["billings"][number], t: (key: string) => string) {
+  const statusLabel = t(bill.status[0] + bill.status.slice(1).toLowerCase());
+  const pendingAmount = Math.max(bill.totalAmount - bill.paidAmount, 0);
+  if (bill.status === "PAID") return `${statusLabel} · ${money(bill.paidAmount)}`;
+  if (bill.status === "PARTIAL") return `${statusLabel} · ${money(pendingAmount)} ${t("Pending")}`;
+  return `${statusLabel} · ${money(pendingAmount)}`;
 }
