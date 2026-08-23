@@ -32,11 +32,12 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressOpen, setAddressOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("");
-  const [sortMode, setSortMode] = useState<"recent" | "customerIdAsc" | "customerIdDesc">("recent");
+  const [sortMode, setSortMode] = useState<"recent" | "customerIdAsc" | "customerIdDesc" | "nameAsc" | "nameDesc">("recent");
   const [billingMessage, setBillingMessage] = useState("");
   const [generatingBills, setGeneratingBills] = useState(false);
   const searchRequestId = useRef(0);
   const addressRequestId = useRef(0);
+  const selectedAddressRef = useRef("");
   const { t } = useI18n();
 
   async function load() {
@@ -122,10 +123,17 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
       setCustomers(filterCachedCustomers(allCustomers, query, ""));
       return;
     }
+    if (normalizeSearch(selectedAddressRef.current) === normalizeSearch(searchText)) {
+      setAddressSuggestions([]);
+      setAddressOpen(false);
+      setCustomers(filterCachedCustomers(allCustomers, query, searchText));
+      return;
+    }
 
     const timer = window.setTimeout(() => {
       if (addressRequestId.current !== requestId) return;
       setAddressSuggestions(addressSuggestionList(allCustomers, searchText));
+      setCustomers(filterCachedCustomers(allCustomers, query, searchText));
       setAddressOpen(true);
     }, 250);
 
@@ -152,6 +160,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   }
 
   async function clearAddress() {
+    selectedAddressRef.current = "";
     setAddressQuery("");
     setAddressSuggestions([]);
     setAddressOpen(false);
@@ -159,7 +168,9 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   }
 
   async function selectAddress(address: string) {
+    selectedAddressRef.current = address;
     setAddressQuery(address);
+    setAddressSuggestions([]);
     setAddressOpen(false);
     setCustomers(filterCachedCustomers(allCustomers, query, address));
   }
@@ -184,7 +195,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
       <main className="content">
         <section className="period-row">
           <select value={month} onChange={(e) => setMonth(Number(e.target.value))}>{Array.from({ length: 12 }, (_, i) => <option key={i + 1} value={i + 1}>{new Date(2024, i).toLocaleString("en", { month: "short" })}</option>)}</select>
-          <input value={year} onChange={(e) => setYear(Number(e.target.value))} />
+          <select value={year} onChange={(e) => setYear(Number(e.target.value))}>{yearOptions(String(year)).map((item) => <option key={item} value={item}>{item}</option>)}</select>
           {user.role === "ADMIN" && <button onClick={generateBills} disabled={generatingBills}><ReceiptIndianRupee size={16} /> {generatingBills ? t("Generating Bills") : t("Generate Bills")}</button>}
         </section>
         {billingMessage && <p className="success notice">{t(billingMessage)}</p>}
@@ -213,7 +224,7 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
             )}
           </div>
           <div className="search-wrap">
-            <label className="search"><Search size={16} /><input placeholder={t("Filter Address")} value={addressQuery} onFocus={() => addressQuery.trim() && setAddressOpen(true)} onBlur={() => window.setTimeout(() => setAddressOpen(false), 120)} onChange={(e) => setAddressQuery(e.target.value)} onKeyDown={(e) => e.key === "Enter" && load()} /></label>
+            <label className="search"><Search size={16} /><input placeholder={t("Filter Address")} value={addressQuery} onFocus={() => addressQuery.trim() && !selectedAddressRef.current && setAddressOpen(true)} onBlur={() => window.setTimeout(() => setAddressOpen(false), 120)} onChange={(e) => { selectedAddressRef.current = ""; setAddressQuery(e.target.value); }} onKeyDown={(e) => e.key === "Enter" && load()} /></label>
             {addressQuery && <button className="search-clear" type="button" onClick={clearAddress}>{t("Clear")}</button>}
             {addressOpen && addressSuggestions.length > 0 && (
               <div className="customer-suggestions">
@@ -232,15 +243,17 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
               </div>
             )}
           </div>
-          <button onClick={load}><Search size={16} /> {t("Search")}</button>
           <select value={sortMode} onChange={(e) => setSortMode(e.target.value as typeof sortMode)}>
             <option value="recent">{t("Recently Updated")}</option>
+            <option value="nameAsc">{t("Name A To Z")}</option>
+            <option value="nameDesc">{t("Name Z To A")}</option>
             <option value="customerIdAsc">{t("Customer ID Low To High")}</option>
             <option value="customerIdDesc">{t("Customer ID High To Low")}</option>
           </select>
           <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
             <option value="">{t("All Payment")}</option><option value="PENDING">{t("Pending")}</option><option value="PARTIAL">{t("Partial")}</option><option value="PAID">{t("Paid")}</option>
           </select>
+          <button onClick={load}><Search size={16} /> {t("Search")}</button>
         </section>
         <section className="customer-list">
           {sortCustomers(customers, sortMode).map((customer) => <CustomerCard key={customer.id} customer={customer} internetEnabled={user.internetEnabled} onOpen={() => openCustomer(customer)} />)}
@@ -261,12 +274,22 @@ function customerSearchValue(customer: Customer) {
   return customer.customerCode ?? name;
 }
 
-function sortCustomers(customers: Customer[], sortMode: "recent" | "customerIdAsc" | "customerIdDesc") {
+function sortCustomers(customers: Customer[], sortMode: "recent" | "customerIdAsc" | "customerIdDesc" | "nameAsc" | "nameDesc") {
   if (sortMode === "recent") return customers;
   return [...customers].sort((a, b) => {
+    if (sortMode === "nameAsc" || sortMode === "nameDesc") {
+      const direction = sortMode === "nameAsc" ? 1 : -1;
+      return compareCustomerName(a, b) * direction;
+    }
     const direction = sortMode === "customerIdAsc" ? 1 : -1;
     return compareCustomerCode(a.customerCode, b.customerCode) * direction;
   });
+}
+
+function compareCustomerName(first: Customer, second: Customer) {
+  const firstName = `${first.firstName} ${first.lastName ?? ""}`.trim();
+  const secondName = `${second.firstName} ${second.lastName ?? ""}`.trim();
+  return firstName.localeCompare(secondName, undefined, { sensitivity: "base", numeric: true });
 }
 
 function compareCustomerCode(first?: string | null, second?: string | null) {
@@ -284,21 +307,21 @@ function filterCachedCustomers(customers: Customer[], query: string, addressQuer
   const search = normalizeSearch(query);
   const addressSearch = normalizeSearch(addressQuery);
   return customers.filter((customer) => {
-    const matchesSearch = !search || customerSearchText(customer).includes(search);
+    const matchesSearch = !search || customerStartsWithSearch(customer, search);
     const matchesAddress = !addressSearch || normalizeSearch(customer.address).includes(addressSearch);
     return matchesSearch && matchesAddress;
   });
 }
 
-function customerSearchText(customer: Customer) {
-  return normalizeSearch([
+function customerStartsWithSearch(customer: Customer, search: string) {
+  const searchableValues = [
     customer.customerCode,
     customer.firstName,
     customer.lastName,
-    customer.phone,
-    customer.address,
-    customer.boxes?.map((box) => `${box.setTopBox.boxNumber} ${box.setTopBox.pairedCardNumber}`).join(" ")
-  ].filter(Boolean).join(" "));
+    ...((customer.boxes ?? []).flatMap((box) => [box.setTopBox.boxNumber, box.setTopBox.pairedCardNumber]))
+  ];
+
+  return searchableValues.some((value) => normalizeSearch(value).startsWith(search));
 }
 
 function addressSuggestionList(customers: Customer[], query: string) {
@@ -309,6 +332,15 @@ function addressSuggestionList(customers: Customer[], query: string) {
     if (addresses.size >= 12) break;
   }
   return Array.from(addresses);
+}
+
+function yearOptions(value?: string) {
+  const currentYear = new Date().getFullYear();
+  const years = new Set<number>();
+  for (let year = currentYear - 1; year <= currentYear + 5; year += 1) years.add(year);
+  const selectedYear = Number(value);
+  if (Number.isInteger(selectedYear) && selectedYear > 1900) years.add(selectedYear);
+  return Array.from(years).sort((a, b) => a - b);
 }
 
 function normalizeSearch(value?: string | null) {

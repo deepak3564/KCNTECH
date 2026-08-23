@@ -21,7 +21,7 @@ export async function addCustomerHistory({
   });
 }
 
-export function describeCustomerChanges(before: Record<string, unknown>, after: Record<string, unknown>) {
+export function describeCustomerChanges(before: Record<string, unknown>, after: Record<string, unknown>, displayValues: Record<string, string> = {}) {
   const labels: Record<string, string> = {
     firstName: "first name",
     lastName: "last name",
@@ -42,7 +42,7 @@ export function describeCustomerChanges(before: Record<string, unknown>, after: 
 
   const changes = Object.entries(after)
     .filter(([key, value]) => before[key] !== value)
-    .map(([key, value]) => `${labels[key] ?? key} changed to ${formatValue(value)}`);
+    .map(([key, value]) => `${labels[key] ?? key} changed to ${formatValue(displayValues[key] ?? value)}`);
 
   return changes.length ? changes.join("; ") : "Customer details updated";
 }
