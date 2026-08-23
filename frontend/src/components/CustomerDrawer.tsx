@@ -120,7 +120,6 @@ export function CustomerDrawer({
     setPaymentError("");
     setEmployeeCablePlanMessage("");
     setEmployeeCablePlanError("");
-    if (!employeeCablePlanId) return;
     if (!employeePlanDirty) {
       setPaymentError("");
       setEmployeeCablePlanMessage("");
@@ -135,7 +134,7 @@ export function CustomerDrawer({
     try {
       await api(`/customers/${customer.id}/cable-plan`, {
         method: "PUT",
-        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month: bill.month, year: bill.year })
+        body: JSON.stringify({ cablePlanId: employeeCablePlanId || null, month: bill.month, year: bill.year })
       });
       setEmployeeCablePlanMessage("Cable Plan Updated.");
       setEmployeePlanEditOpen(false);
@@ -255,7 +254,7 @@ export function CustomerDrawer({
             {canEditPlanInPayment && (
               <button
                 type="button"
-                disabled={planEditBlocked || (employeePlanEditOpen && !employeeCablePlanId)}
+                disabled={planEditBlocked}
                 onClick={() => {
                   if (!employeePlanEditOpen) {
                     setEmployeeCablePlanMessage("");
