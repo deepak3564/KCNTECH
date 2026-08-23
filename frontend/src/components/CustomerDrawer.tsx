@@ -57,7 +57,7 @@ export function CustomerDrawer({
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const { t } = useI18n();
   const cablePlanOptions = plans.filter((plan) => plan.type === "CABLE" && plan.isActive !== false);
-  const canEditPlanInPayment = (user.role === "ADMIN" || user.role === "EMPLOYEE") && customer.cableStatus !== "NA";
+  const canEditPlanInPayment = user.role === "ADMIN" || user.role === "EMPLOYEE";
   const employeePlanBillCollected = isBillingCollected(bill);
   const planEditBlocked = user.role === "EMPLOYEE" && employeePlanBillCollected;
   const hasPlanEditInProgress = employeePlanEditOpen;
