@@ -61,6 +61,9 @@ export function CustomerDrawer({
   const employeePlanBillCollected = isBillingCollected(bill);
   const planEditBlocked = user.role === "EMPLOYEE" && employeePlanBillCollected;
   const hasPlanEditInProgress = employeePlanEditOpen;
+  const showPaymentPanel = Boolean(bill) && (
+    !(user.role === "EMPLOYEE" && selectedBillFullyPaid) || (canEditPlanInPayment && !planEditBlocked)
+  );
 
   useEffect(() => {
     setAmount(String(pendingAmount));
@@ -221,7 +224,7 @@ export function CustomerDrawer({
         <span>{t("Card")}<strong>{customer.boxes[0]?.setTopBox.pairedCardNumber ?? "NA"}</strong></span>
         <span>{t("Current Bill")}<strong>{bill ? `${t(bill.status[0] + bill.status.slice(1).toLowerCase())} · ${money(bill.totalAmount - bill.paidAmount)}` : "NA"}</strong></span>
       </div>
-      {bill && !(user.role === "EMPLOYEE" && selectedBillFullyPaid) && (
+      {bill && showPaymentPanel && (
         <form className="payment-form accept-payment-panel" onSubmit={collect}>
           <h3>{t("Accept Payment")}</h3>
           <div className="history">{t("Bill Month")}<strong>{formatBillMonth(bill.month, bill.year)}</strong></div>
