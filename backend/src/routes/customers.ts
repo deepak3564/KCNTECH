@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { Role } from "@prisma/client";
+import { BillingStatus, Plan, Role } from "@prisma/client";
 import { z } from "zod";
 import { ensureMonthlyBillings, recalculateBillingStatus } from "../lib/billing.js";
 import { addCustomerHistory } from "../lib/customerHistory.js";
@@ -208,7 +208,7 @@ customersRouter.get("/:id/history", async (req, res) => {
   const history = await prisma.customerHistory.findMany({
     where: { organisationId, customerId: customer.id },
     include: { user: { select: { name: true, role: true } } },
-    orderBy: { createdAt: "asc" }
+    orderBy: { createdAt: "desc" }
   });
 
   res.json(history);
@@ -258,19 +258,31 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
     include: { cablePlan: true, internetPlan: true }
   });
   if (!customer) return res.status(404).json({ message: "Customer not found." });
+  if (req.user!.role === Role.EMPLOYEE) {
+    const selectedBilling = await prisma.monthlyBilling.findUnique({
+      where: { customerId_month_year: { customerId: customer.id, month: body.month, year: body.year } },
+      include: { payments: true }
+    });
+    if (selectedBilling && (selectedBilling.status !== "PENDING" || selectedBilling.paidAmount > 0 || selectedBilling.payments.length > 0)) {
+      return res.status(400).json({ message: "Bill Already Collected For Selected Month. If Change In Plans Please Contact Admin." });
+    }
+  }
 
   const cablePlan = await prisma.plan.findFirst({
     where: { id: body.cablePlanId, organisationId, type: "CABLE", isActive: true, deleted: false }
   });
   if (!cablePlan) return res.status(400).json({ message: "Selected Cable Plan Is Inactive Or Not Available." });
+  const selectedPeriodStartsEarlier = isBeforePeriod(body.month, body.year, customer.cableStartMonth, customer.cableStartYear);
+  const cableStartMonth = !customer.cableStartMonth || selectedPeriodStartsEarlier ? body.month : customer.cableStartMonth;
+  const cableStartYear = !customer.cableStartYear || selectedPeriodStartsEarlier ? body.year : customer.cableStartYear;
 
   const updated = await prisma.customer.update({
     where: { id: customer.id },
     data: {
       cableStatus: "ACTIVE",
       cablePlanId: cablePlan.id,
-      cableStartMonth: customer.cableStartMonth ?? body.month,
-      cableStartYear: customer.cableStartYear ?? body.year
+      cableStartMonth,
+      cableStartYear
     },
     include: {
       cablePlan: true,
@@ -289,6 +301,13 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
     where: { customerId_month_year: { customerId: customer.id, month: body.month, year: body.year } }
   });
   if (billing) await recalculateBillingStatus(billing.id);
+  await repairFutureEmptyCableBillings({
+    organisationId,
+    customerId: customer.id,
+    fromMonth: body.month,
+    fromYear: body.year,
+    cablePlan
+  });
 
   await addCustomerHistory({
     organisationId,
@@ -299,3 +318,61 @@ customersRouter.put("/:id/cable-plan", async (req, res) => {
 
   res.json(updated);
 });
+
+function isBeforePeriod(month: number, year: number, targetMonth?: number | null, targetYear?: number | null) {
+  if (!targetMonth || !targetYear) return false;
+  return year < targetYear || (year === targetYear && month < targetMonth);
+}
+
+function isAfterPeriod(month: number, year: number, targetMonth: number, targetYear: number) {
+  return year > targetYear || (year === targetYear && month > targetMonth);
+}
+
+async function repairFutureEmptyCableBillings({
+  organisationId,
+  customerId,
+  fromMonth,
+  fromYear,
+  cablePlan
+}: {
+  organisationId: string;
+  customerId: string;
+  fromMonth: number;
+  fromYear: number;
+  cablePlan: Plan;
+}) {
+  const futureEmptyPlanHistory = await prisma.customerPlanHistory.findMany({
+    where: {
+      organisationId,
+      customerId,
+      OR: [{ year: { gt: fromYear } }, { year: fromYear, month: { gt: fromMonth } }],
+      AND: [{ OR: [{ cablePlanId: null }, { cablePrice: 0 }] }]
+    }
+  });
+
+  for (const history of futureEmptyPlanHistory) {
+    const updatedHistory = await prisma.customerPlanHistory.update({
+      where: { id: history.id },
+      data: {
+        cablePlanId: cablePlan.id,
+        cablePlanName: cablePlan.name,
+        cablePrice: cablePlan.price
+      }
+    });
+
+    const billing = await prisma.monthlyBilling.findUnique({
+      where: { customerId_month_year: { customerId, month: history.month, year: history.year } }
+    });
+    if (!billing || billing.paidAmount > 0 || !isAfterPeriod(billing.month, billing.year, fromMonth, fromYear)) continue;
+
+    await prisma.monthlyBilling.update({
+      where: { id: billing.id },
+      data: {
+        cableAmount: cablePlan.price,
+        internetAmount: updatedHistory.internetPrice,
+        totalAmount: cablePlan.price + updatedHistory.internetPrice + billing.maintenanceAmount,
+        status: BillingStatus.PENDING
+      }
+    });
+  }
+}

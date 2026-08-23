@@ -52,7 +52,7 @@ export function EmployeeCollectionSummary() {
       <h2><BarChart3 size={20} /> {t("Employee Collection Summary")}</h2>
       <div className="ledger-row">
         <label>{t("Month")}<select value={month} onChange={(event) => setMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2024, index).toLocaleString("en", { month: "short" })}</option>)}</select></label>
-        <label>{t("Year")}<input value={year} onChange={(event) => setYear(Number(event.target.value))} /></label>
+        <label>{t("Year")}<select value={year} onChange={(event) => setYear(Number(event.target.value))}>{yearOptions(String(year)).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>
         <button type="button" onClick={loadSummary}>{t("View")}</button>
       </div>
       {error && <p className="error inline-error">{t(error)}</p>}
@@ -91,4 +91,13 @@ export function EmployeeCollectionSummary() {
       )}
     </section>
   );
+}
+
+function yearOptions(value?: string) {
+  const currentYear = new Date().getFullYear();
+  const years = new Set<number>();
+  for (let year = currentYear - 1; year <= currentYear + 5; year += 1) years.add(year);
+  const selectedYear = Number(value);
+  if (Number.isInteger(selectedYear) && selectedYear > 1900) years.add(selectedYear);
+  return Array.from(years).sort((a, b) => a - b);
 }

@@ -3,8 +3,7 @@ import { Download, X } from "lucide-react";
 import { api, money, SessionUser, uploadUrl } from "../api/client";
 import { useI18n } from "../i18n";
 import { Box, Customer, Employee, Plan } from "../types";
-import { CustomerHistoryPanel } from "./CustomerHistoryPanel";
-import { CustomerPlanHistoryPanel } from "./CustomerPlanHistoryPanel";
+import { CustomerHistoryTabs } from "./CustomerHistoryTabs";
 import { SetTopBoxSearchSelect } from "./SetTopBoxSearchSelect";
 
 export function CustomerDrawer({
@@ -31,29 +30,37 @@ export function CustomerDrawer({
   onRefresh: () => void | Promise<void>;
 }) {
   const billings = customer.billings ?? [];
+  const paymentHistoryBillings = billings.filter((item) => (item.payments?.length ?? 0) > 0);
   const bill = billings.find((item) => item.month === month && item.year === year) ?? billings[0];
   const pendingAmount = Math.max((bill?.totalAmount ?? 0) - (bill?.paidAmount ?? 0), 0);
   const hasPendingAmount = pendingAmount > 0;
+  const selectedBillFullyPaid = isBillingFullyPaid(bill);
   const [amount, setAmount] = useState(String(pendingAmount));
   const [mode, setMode] = useState("CASH");
   const [proof, setProof] = useState<File | null>(null);
   const [paymentError, setPaymentError] = useState("");
   const [employeeCablePlanId, setEmployeeCablePlanId] = useState(customer.cablePlanId ?? "");
-  const [employeeCablePlanMonth, setEmployeeCablePlanMonth] = useState(month);
-  const [employeeCablePlanYear, setEmployeeCablePlanYear] = useState(year);
+  const [employeePlanEditOpen, setEmployeePlanEditOpen] = useState(false);
+  const [employeePlanDirty, setEmployeePlanDirty] = useState(false);
   const [employeeCablePlanMessage, setEmployeeCablePlanMessage] = useState("");
   const [employeeCablePlanError, setEmployeeCablePlanError] = useState("");
   const [advanceOpen, setAdvanceOpen] = useState(false);
   const [advanceMonth, setAdvanceMonth] = useState(month);
   const [advanceYear, setAdvanceYear] = useState(year);
+  const [advanceCablePlanId, setAdvanceCablePlanId] = useState(customer.cablePlanId ?? "");
   const [advanceBillingId, setAdvanceBillingId] = useState("");
   const [advancePending, setAdvancePending] = useState(0);
   const [advanceAmount, setAdvanceAmount] = useState("");
   const [advanceMode, setAdvanceMode] = useState("CASH");
   const [advanceProof, setAdvanceProof] = useState<File | null>(null);
   const [advanceError, setAdvanceError] = useState("");
+  const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const { t } = useI18n();
   const cablePlanOptions = plans.filter((plan) => plan.type === "CABLE" && plan.isActive !== false);
+  const canEditPlanInPayment = (user.role === "ADMIN" || user.role === "EMPLOYEE") && customer.cableStatus !== "NA";
+  const employeePlanBillCollected = isBillingCollected(bill);
+  const planEditBlocked = user.role === "EMPLOYEE" && employeePlanBillCollected;
+  const hasPlanEditInProgress = employeePlanEditOpen;
 
   useEffect(() => {
     setAmount(String(pendingAmount));
@@ -61,17 +68,35 @@ export function CustomerDrawer({
 
   useEffect(() => {
     setEmployeeCablePlanId(customer.cablePlanId ?? "");
+    setEmployeePlanEditOpen(false);
+    setEmployeePlanDirty(false);
+    setAdvanceCablePlanId(customer.cablePlanId ?? "");
   }, [customer.cablePlanId]);
 
   useEffect(() => {
-    setEmployeeCablePlanMonth(month);
-    setEmployeeCablePlanYear(year);
-  }, [month, year]);
+    if (!advanceOpen) return;
+    if (customer.cableStatus !== "NA" && !advanceCablePlanId) {
+      clearLoadedAdvanceBill();
+      return;
+    }
+
+    const timer = window.setTimeout(() => {
+      loadAdvanceBill(false).catch((err) => {
+        setAdvanceError(err instanceof Error ? err.message : "Could Not Load Payment Preview");
+      });
+    }, 250);
+
+    return () => window.clearTimeout(timer);
+  }, [advanceOpen, advanceMonth, advanceYear, advanceCablePlanId]);
 
   async function collect(event: React.FormEvent) {
     event.preventDefault();
     if (!bill) return;
     setPaymentError("");
+    if (hasPlanEditInProgress) {
+      setPaymentError("Please Save Changes Before Collecting.");
+      return;
+    }
     if (!hasPendingAmount) return;
     if (Number(amount) > pendingAmount) {
       setPaymentError("Collection Amount Cannot Be Greater Than Pending Amount.");
@@ -87,28 +112,49 @@ export function CustomerDrawer({
     onClose();
   }
 
-  async function updateEmployeeCablePlan(event: React.FormEvent) {
-    event.preventDefault();
+  async function updateEmployeeCablePlan() {
+    if (!bill) return;
+    setPaymentError("");
     setEmployeeCablePlanMessage("");
     setEmployeeCablePlanError("");
     if (!employeeCablePlanId) return;
+    if (!employeePlanDirty) {
+      setPaymentError("");
+      setEmployeeCablePlanMessage("");
+      setEmployeeCablePlanError("");
+      setEmployeePlanEditOpen(false);
+      return;
+    }
+    if (employeePlanBillCollected) {
+      setEmployeeCablePlanError("Bill Already Collected For Selected Month. If Change In Plans Please Contact Admin.");
+      return;
+    }
     try {
       await api(`/customers/${customer.id}/cable-plan`, {
         method: "PUT",
-        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month: employeeCablePlanMonth, year: employeeCablePlanYear })
+        body: JSON.stringify({ cablePlanId: employeeCablePlanId, month: bill.month, year: bill.year })
       });
       setEmployeeCablePlanMessage("Cable Plan Updated.");
+      setEmployeePlanEditOpen(false);
+      setEmployeePlanDirty(false);
       await onRefresh();
     } catch (err) {
       setEmployeeCablePlanError(err instanceof Error ? err.message : "Could Not Update Cable Plan");
     }
   }
 
-  async function loadAdvanceBill() {
+  async function loadAdvanceBill(showLoading = true) {
     setAdvanceError("");
     const preview = await api<{ billings: Array<{ id: string; totalAmount: number; paidAmount: number }>; pendingAmount: number }>("/payments/preview", {
       method: "POST",
-      body: JSON.stringify({ customerId: customer.id, periods: [{ month: advanceMonth, year: advanceYear }], samePlan: true })
+      showLoading,
+      body: JSON.stringify({
+        customerId: customer.id,
+        periods: [{ month: advanceMonth, year: advanceYear }],
+        samePlan: false,
+        cablePlanId: customer.cableStatus === "NA" ? null : advanceCablePlanId || null,
+        internetPlanId: customer.internetStatus === "NA" ? null : customer.internetPlanId ?? null
+      })
     });
     const nextBilling = preview.billings[0];
     if (!nextBilling) {
@@ -122,6 +168,12 @@ export function CustomerDrawer({
     setAdvanceBillingId(nextBilling.id);
     setAdvancePending(nextPending);
     setAdvanceAmount(String(nextPending));
+  }
+
+  function clearLoadedAdvanceBill() {
+    setAdvanceBillingId("");
+    setAdvancePending(0);
+    setAdvanceAmount("");
   }
 
   async function collectAdvance(event: React.FormEvent) {
@@ -140,7 +192,8 @@ export function CustomerDrawer({
     form.append("billingId", advanceBillingId);
     form.append("amount", advanceAmount);
     form.append("mode", advanceMode);
-    form.append("note", `Advance payment for ${advanceMonth}/${advanceYear}`);
+    const selectedAdvancePlan = cablePlanOptions.find((plan) => plan.id === advanceCablePlanId);
+    form.append("note", `Advance payment for ${advanceMonth}/${advanceYear}${selectedAdvancePlan ? ` with cable plan ${selectedAdvancePlan.name}` : ""}`);
     if (advanceProof) form.append("proof", advanceProof);
     await api("/payments", { method: "POST", body: form });
     await onRefresh();
@@ -157,7 +210,7 @@ export function CustomerDrawer({
         </div>
         <button className="small-button" onClick={onClose} title={t("Close")}><X size={16} /></button>
       </header>
-      <div className="detail-grid">
+      <div className="detail-grid customer-detail-panel">
         <span>{t("Phone")}<strong>{customer.phone ?? "NA"}</strong></span>
         <span>{t("Customer ID")}<strong>{customer.customerCode ?? "NA"}</strong></span>
         <span>{t("Cable")}<strong>{customer.cablePlan ? `${customer.cablePlan.name} · ${money(customer.cablePlan.price)}` : "NA"}</strong></span>
@@ -168,49 +221,105 @@ export function CustomerDrawer({
         <span>{t("Card")}<strong>{customer.boxes[0]?.setTopBox.pairedCardNumber ?? "NA"}</strong></span>
         <span>{t("Current Bill")}<strong>{bill ? `${t(bill.status[0] + bill.status.slice(1).toLowerCase())} · ${money(bill.totalAmount - bill.paidAmount)}` : "NA"}</strong></span>
       </div>
-      <CustomerHistoryPanel customerId={customer.id} />
-      <CustomerPlanHistoryPanel customerId={customer.id} internetEnabled={internetEnabled} />
-      {user.role === "EMPLOYEE" && customer.cableStatus !== "NA" && (
-        <form className="payment-form" onSubmit={updateEmployeeCablePlan}>
-          <h3>{t("Update Cable Plan")}</h3>
-          <div className="advance-period-row">
-            <MonthSelect label={t("Bill Month")} value={String(employeeCablePlanMonth)} onChange={(value) => setEmployeeCablePlanMonth(Number(value))} />
-            <YearInput label={t("Bill Year")} value={String(employeeCablePlanYear)} onChange={(value) => setEmployeeCablePlanYear(Number(value))} />
-          </div>
-          <label>
-            {t("Cable Plan")}
-            <select value={employeeCablePlanId} onChange={(event) => setEmployeeCablePlanId(event.target.value)}>
-              <option value="">NA</option>
-              {cablePlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}
-            </select>
-          </label>
-          <button className="primary" disabled={!employeeCablePlanId}>{t("Save")}</button>
-          {employeeCablePlanMessage && <p className="success">{t(employeeCablePlanMessage)}</p>}
-          {employeeCablePlanError && <p className="error inline-error">{t(employeeCablePlanError)}</p>}
-        </form>
-      )}
-      {bill && (
-        <form className="payment-form" onSubmit={collect}>
+      {bill && !(user.role === "EMPLOYEE" && selectedBillFullyPaid) && (
+        <form className="payment-form accept-payment-panel" onSubmit={collect}>
           <h3>{t("Accept Payment")}</h3>
           <div className="history">{t("Bill Month")}<strong>{formatBillMonth(bill.month, bill.year)}</strong></div>
           <div className="history">{t("Pending")}<strong>{money(pendingAmount)}</strong></div>
+          {canEditPlanInPayment && (
+            <>
+              <label>
+                {t("Cable Plan")}
+                <select value={employeeCablePlanId} disabled={planEditBlocked || !employeePlanEditOpen} onChange={(event) => {
+                  setEmployeeCablePlanId(event.target.value);
+                  setEmployeePlanDirty(true);
+                  setPaymentError("");
+                }}>
+                  <option value="">NA</option>
+                  {cablePlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}
+                </select>
+              </label>
+              {planEditBlocked && <p className="error inline-error">{formatBillMonth(bill.month, bill.year)} {t("Bill Is Already Collected. If Change In Plans Please Contact Admin.")}</p>}
+              {employeeCablePlanMessage && <p className="success">{t(employeeCablePlanMessage)}</p>}
+              {employeeCablePlanError && <p className="error inline-error">{t(employeeCablePlanError)}</p>}
+            </>
+          )}
           <label>{t("Amount")}<input type="number" min="0" value={amount} disabled={!hasPendingAmount} onChange={(e) => setAmount(e.target.value)} /></label>
           {paymentError && <p className="error inline-error">{t(paymentError)}</p>}
           <label>{t("Mode")}<select value={mode} disabled={!hasPendingAmount} onChange={(e) => setMode(e.target.value)}><option value="CASH">{t("Cash")}</option>{user.role === "ADMIN" && <option value="ADMIN_UPI">{t("Admin UPI")}</option>}<option value="EMPLOYEE_UPI">{t("Employee UPI")}</option></select></label>
           {mode !== "CASH" && <ProofUpload proof={proof} disabled={!hasPendingAmount} onChange={setProof} />}
-          <button className="primary" disabled={!hasPendingAmount}>{t("Mark Collected")}</button>
+          <div className="payment-action-row">
+            {canEditPlanInPayment && (
+              <button
+                type="button"
+                disabled={planEditBlocked || (employeePlanEditOpen && !employeeCablePlanId)}
+                onClick={() => {
+                  if (!employeePlanEditOpen) {
+                    setEmployeeCablePlanMessage("");
+                    setEmployeeCablePlanError("");
+                    setEmployeePlanDirty(false);
+                    setEmployeePlanEditOpen(true);
+                    return;
+                  }
+                  updateEmployeeCablePlan();
+                }}
+              >
+                {employeePlanEditOpen ? t("Update Plan") : t("Edit Plan")}
+              </button>
+            )}
+            <button className="primary" disabled={!hasPendingAmount}>{t("Mark Collected")}</button>
+          </div>
         </form>
       )}
-      <section className="advance-payment-panel">
-        <button type="button" onClick={() => setAdvanceOpen((current) => !current)}>{advanceOpen ? t("Hide Advance Payment") : t("Advance Payment")}</button>
+      <section className={`customer-payment-tabs ${advanceOpen ? "payment-tab-advance-active" : ""} ${paymentHistoryOpen ? "payment-tab-history-active" : ""}`}>
+        <div className="customer-history-tab-buttons">
+          <button
+            type="button"
+            className={advanceOpen ? "active-tab" : ""}
+            onClick={() => {
+              setAdvanceOpen((current) => !current);
+              setPaymentHistoryOpen(false);
+            }}
+          >
+            {advanceOpen ? t("Hide Advance Payment") : t("Advance Payment")}
+          </button>
+          <button
+            type="button"
+            className={paymentHistoryOpen ? "active-tab" : ""}
+            onClick={() => {
+              setPaymentHistoryOpen((current) => !current);
+              setAdvanceOpen(false);
+            }}
+          >
+            {paymentHistoryOpen ? t("Hide Payment History") : t("Payment History")}
+          </button>
+        </div>
         {advanceOpen && (
+          <div className="customer-payment-tab-content">
           <form className="payment-form" onSubmit={collectAdvance}>
             <h3>{t("Advance Payment")}</h3>
             <div className="advance-period-row">
-              <MonthSelect label={t("Bill Month")} value={String(advanceMonth)} onChange={(value) => setAdvanceMonth(Number(value))} />
-              <YearInput label={t("Bill Year")} value={String(advanceYear)} onChange={(value) => setAdvanceYear(Number(value))} />
-              <button type="button" onClick={loadAdvanceBill}>{t("Load Bill")}</button>
+              <MonthSelect label={t("Bill Month")} value={String(advanceMonth)} onChange={(value) => {
+                setAdvanceMonth(Number(value));
+                clearLoadedAdvanceBill();
+              }} />
+              <YearInput label={t("Bill Year")} value={String(advanceYear)} onChange={(value) => {
+                setAdvanceYear(Number(value));
+                clearLoadedAdvanceBill();
+              }} />
             </div>
+            {customer.cableStatus !== "NA" && (
+              <label>
+                {t("Cable Plan")}
+                <select value={advanceCablePlanId} onChange={(event) => {
+                  setAdvanceCablePlanId(event.target.value);
+                  clearLoadedAdvanceBill();
+                }}>
+                  <option value="">NA</option>
+                  {cablePlanOptions.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {money(plan.price)}</option>)}
+                </select>
+              </label>
+            )}
             <div className="history">{t("Selected Bill")}<strong>{formatBillMonth(advanceMonth, advanceYear)}</strong></div>
             <div className="history">{t("Pending")}<strong>{money(advancePending)}</strong></div>
             <label>{t("Amount")}<input type="number" min="0" value={advanceAmount} disabled={!advanceBillingId || advancePending <= 0} onChange={(e) => setAdvanceAmount(e.target.value)} /></label>
@@ -219,26 +328,32 @@ export function CustomerDrawer({
             {advanceMode !== "CASH" && <ProofUpload proof={advanceProof} disabled={!advanceBillingId || advancePending <= 0} onChange={setAdvanceProof} />}
             <button className="primary" disabled={!advanceBillingId || advancePending <= 0}>{t("Mark Advance Collected")}</button>
           </form>
+          </div>
         )}
-      </section>
-      <section>
-        <h3>{t("Payment History")}</h3>
-        {billings.map((item) => (
-          <div className="payment-history-item" key={item.id}>
-            <div className="history">{item.month}/{item.year}<strong>{t(item.status[0] + item.status.slice(1).toLowerCase())} · {money(item.paidAmount)} / {money(item.totalAmount)}</strong></div>
-            {(item.payments ?? []).map((payment) => (
-              <div className="payment-proof-row" key={`${item.id}-${payment.paidAt}-${payment.amount}`}>
-                <span>{new Date(payment.paidAt).toLocaleDateString()} · {t(payment.mode)} · {money(payment.amount)}</span>
-                {payment.proofImageUrl && (
-                  <a className="download-image-button" href={uploadUrl(payment.proofImageUrl)} download target="_blank" rel="noreferrer" title={t("Download Image")} aria-label={t("Download Image")}>
-                    <Download size={15} />
-                  </a>
-                )}
+        {paymentHistoryOpen && (
+          <div className="customer-payment-tab-content">
+          <div className="history-list">
+            {paymentHistoryBillings.length === 0 && <p className="empty">{t("No Payment History Found.")}</p>}
+            {paymentHistoryBillings.map((item) => (
+              <div className="payment-history-item" key={item.id}>
+                <div className="history">{item.month}/{item.year}<strong>{t(item.status[0] + item.status.slice(1).toLowerCase())} · {money(item.paidAmount)} / {money(item.totalAmount)}</strong></div>
+                {(item.payments ?? []).map((payment) => (
+                  <div className="payment-proof-row" key={`${item.id}-${payment.paidAt}-${payment.amount}`}>
+                    <span>{new Date(payment.paidAt).toLocaleDateString()} · {t(payment.mode)} · {money(payment.amount)}</span>
+                    {payment.proofImageUrl && (
+                      <a className="download-image-button" href={uploadUrl(payment.proofImageUrl)} download target="_blank" rel="noreferrer" title={t("Download Image")} aria-label={t("Download Image")}>
+                        <Download size={15} />
+                      </a>
+                    )}
+                  </div>
+                ))}
               </div>
             ))}
           </div>
-        ))}
+          </div>
+        )}
       </section>
+      <CustomerHistoryTabs customerId={customer.id} internetEnabled={internetEnabled} />
       {user.role === "ADMIN" && <AdminCustomerActions customer={customer} plans={plans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={internetEnabled} onRefresh={onRefresh} onClose={onClose} />}
     </aside>
   );
@@ -285,7 +400,7 @@ function AdminCustomerActions({
   onRefresh: () => void | Promise<void>;
   onClose: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
+  const [activeAdminAction, setActiveAdminAction] = useState<"edit" | "reset" | null>(null);
   const [error, setError] = useState("");
   const [resetMonth, setResetMonth] = useState(String(month));
   const [resetYear, setResetYear] = useState(String(year));
@@ -321,16 +436,6 @@ function AdminCustomerActions({
   });
   const selectedResetBilling = (customer.billings ?? []).find((billing) => billing.month === Number(resetMonth) && billing.year === Number(resetYear));
   const canResetPayment = (selectedResetBilling?.paidAmount ?? 0) > 0 || (selectedResetBilling?.payments?.length ?? 0) > 0;
-
-  async function toggleStatus() {
-    setError("");
-    try {
-      await api(`/admin/customers/${customer.id}`, { method: "PUT", body: JSON.stringify({ status: customer.status === "ACTIVE" ? "INACTIVE" : "ACTIVE" }) });
-      await onRefresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could Not Update Customer Status");
-    }
-  }
 
   async function save(event: React.FormEvent) {
     event.preventDefault();
@@ -397,25 +502,26 @@ function AdminCustomerActions({
   }
 
   return (
-    <section className="admin-actions">
-      <div className="edit-actions">
-        <button onClick={() => setEditing((current) => !current)}>{editing ? t("Hide Edit") : t("Edit Customer")}</button>
-        <button onClick={toggleStatus}>{customer.status === "ACTIVE" ? t("Make Inactive") : t("Make Active")}</button>
+    <section className="admin-actions admin-customer-tabs">
+      <div className="customer-history-tab-buttons">
+        <button
+          type="button"
+          className={activeAdminAction === "edit" ? "active-tab" : ""}
+          onClick={() => setActiveAdminAction((current) => current === "edit" ? null : "edit")}
+        >
+          {activeAdminAction === "edit" ? t("Hide Edit") : t("Edit Customer")}
+        </button>
+        <button
+          type="button"
+          className={activeAdminAction === "reset" ? "active-tab" : ""}
+          onClick={() => setActiveAdminAction((current) => current === "reset" ? null : "reset")}
+        >
+          {activeAdminAction === "reset" ? t("Hide Reset Payment") : t("Reset Payment")}
+        </button>
       </div>
-      <button className="delete-button" onClick={deleteCustomer}>{t("Delete Customer")}</button>
       {error && <p className="error inline-error">{t(error)}</p>}
-      <form className="payment-form reset-payment-form" onSubmit={resetPayment}>
-        <h3>{t("Reset Monthly Payment")}</h3>
-        <div className="advance-period-row">
-          <MonthSelect label={t("Bill Month")} value={resetMonth} onChange={setResetMonth} />
-          <YearInput label={t("Bill Year")} value={resetYear} onChange={setResetYear} />
-        </div>
-        <div className="history">{t("Collected")}<strong>{money(selectedResetBilling?.paidAmount ?? 0)}</strong></div>
-        {resetError && <p className="error inline-error">{t(resetError)}</p>}
-        {resetMessage && <p className="success">{t(resetMessage)}</p>}
-        <button className="delete-button" disabled={!canResetPayment}>{t("Reset Payment")}</button>
-      </form>
-      {editing && (
+      {activeAdminAction === "edit" && (
+        <div className="admin-customer-tab-content">
         <form className="customer-edit-form" onSubmit={save}>
           <label>{t("Customer ID")}<input value={values.customerCode} onChange={(e) => setValues({ ...values, customerCode: e.target.value })} /></label>
           <label>{t("First Name")}<input value={values.firstName} onChange={(e) => setValues({ ...values, firstName: e.target.value })} /></label>
@@ -434,12 +540,29 @@ function AdminCustomerActions({
           {internetEnabled && values.internetStatus !== "NA" && <MonthSelect label={t("Internet Start Month")} value={values.internetStartMonth} onChange={(value) => setValues({ ...values, internetStartMonth: value })} />}
           {internetEnabled && values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => setValues({ ...values, internetStartYear: value })} />}
           <label className="full-field">{t("Notes")}<input value={values.notes} onChange={(e) => setValues({ ...values, notes: e.target.value })} /></label>
-          <div className="edit-actions full-field">
-            <button className="primary">{t("Save Customer Details")}</button>
-            <button type="button" onClick={() => setEditing(false)}>{t("Cancel")}</button>
+          <div className="edit-actions customer-edit-action-row full-field">
+            <button className="primary">{t("Save")}</button>
+            <button type="button" onClick={() => setActiveAdminAction(null)}>{t("Cancel")}</button>
+            <button type="button" className="delete-button" onClick={deleteCustomer}>{t("Delete")}</button>
           </div>
           {error && <p className="error inline-error">{t(error)}</p>}
         </form>
+        </div>
+      )}
+      {activeAdminAction === "reset" && (
+        <div className="admin-customer-tab-content">
+      <form className="payment-form" onSubmit={resetPayment}>
+        <h3>{t("Reset Monthly Payment")}</h3>
+        <div className="advance-period-row">
+          <MonthSelect label={t("Bill Month")} value={resetMonth} onChange={setResetMonth} />
+          <YearInput label={t("Bill Year")} value={resetYear} onChange={setResetYear} />
+        </div>
+        <div className="history">{t("Collected")}<strong>{money(selectedResetBilling?.paidAmount ?? 0)}</strong></div>
+        {resetError && <p className="error inline-error">{t(resetError)}</p>}
+        {resetMessage && <p className="success">{t(resetMessage)}</p>}
+        <button className="delete-button" disabled={!canResetPayment}>{t("Reset Payment")}</button>
+      </form>
+        </div>
       )}
     </section>
   );
@@ -458,6 +581,16 @@ function formatBillMonth(month: number, year: number) {
   return `${new Date(2024, month - 1).toLocaleString("en", { month: "long" })} ${year}`;
 }
 
+function isBillingCollected(billing?: Customer["billings"][number]) {
+  if (!billing) return false;
+  return billing.status === "PAID" || billing.status === "PARTIAL" || billing.paidAmount > 0 || (billing.payments?.length ?? 0) > 0;
+}
+
+function isBillingFullyPaid(billing?: Customer["billings"][number]) {
+  if (!billing) return false;
+  return billing.status === "PAID" || Math.max(billing.totalAmount - billing.paidAmount, 0) <= 0;
+}
+
 function MonthSelect({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   return (
     <label>{label}<select value={value} onChange={(event) => onChange(event.target.value)}>
@@ -469,5 +602,18 @@ function MonthSelect({ label, value, onChange }: { label: string; value: string;
 }
 
 function YearInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
-  return <label>{label}<input type="number" value={value} onChange={(event) => onChange(event.target.value)} /></label>;
+  return (
+    <label>{label}<select value={value} onChange={(event) => onChange(event.target.value)}>
+      {yearOptions(value).map((year) => <option key={year} value={year}>{year}</option>)}
+    </select></label>
+  );
+}
+
+function yearOptions(value?: string) {
+  const currentYear = new Date().getFullYear();
+  const years = new Set<number>();
+  for (let year = currentYear - 1; year <= currentYear + 5; year += 1) years.add(year);
+  const selectedYear = Number(value);
+  if (Number.isInteger(selectedYear) && selectedYear > 1900) years.add(selectedYear);
+  return Array.from(years).sort((a, b) => a - b);
 }

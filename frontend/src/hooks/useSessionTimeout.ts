@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-const SESSION_TIMEOUT_MS = 2 * 60 * 1000;
+const SESSION_TIMEOUT_MS = 5 * 60 * 1000;
 const WARNING_MS = 60 * 1000;
 const TICK_MS = 1000;
 const ACTIVITY_EVENTS = ["click", "keydown", "mousemove", "scroll", "touchstart"];

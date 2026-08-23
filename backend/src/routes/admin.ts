@@ -361,14 +361,36 @@ adminRouter.put("/customers/:id", async (req, res) => {
     month: effectiveMonth ?? now.getMonth() + 1,
     year: effectiveYear ?? now.getFullYear()
   });
+  const historyDisplayValues = await customerHistoryDisplayValues(organisationId, customerData);
   await addCustomerHistory({
     organisationId,
     customerId: customer.id,
     userId: req.user!.id,
-    comment: describeCustomerChanges(before, customerData)
+    comment: describeCustomerChanges(before, customerData, historyDisplayValues)
   });
   res.json(customer);
 });
+
+async function customerHistoryDisplayValues(
+  organisationId: string,
+  customerData: {
+    collectorId?: string | null;
+    cablePlanId?: string | null;
+    internetPlanId?: string | null;
+  }
+) {
+  const displayValues: Record<string, string> = {};
+  const [collector, cablePlan, internetPlan] = await Promise.all([
+    customerData.collectorId ? prisma.user.findFirst({ where: { id: customerData.collectorId, organisationId, deleted: false }, select: { name: true } }) : Promise.resolve(null),
+    customerData.cablePlanId ? prisma.plan.findFirst({ where: { id: customerData.cablePlanId, organisationId, deleted: false }, select: { name: true, price: true } }) : Promise.resolve(null),
+    customerData.internetPlanId ? prisma.plan.findFirst({ where: { id: customerData.internetPlanId, organisationId, deleted: false }, select: { name: true, price: true } }) : Promise.resolve(null)
+  ]);
+
+  if (customerData.collectorId !== undefined) displayValues.collectorId = collector?.name ?? "NA";
+  if (customerData.cablePlanId !== undefined) displayValues.cablePlanId = cablePlan ? `${cablePlan.name} (${cablePlan.price})` : "NA";
+  if (customerData.internetPlanId !== undefined) displayValues.internetPlanId = internetPlan ? `${internetPlan.name} (${internetPlan.price})` : "NA";
+  return displayValues;
+}
 
 adminRouter.delete("/customers/:id", async (req, res) => {
   const organisationId = organisationScope(req);
@@ -442,6 +464,7 @@ adminRouter.post("/generate-monthly-bills", async (req, res) => {
 adminRouter.post("/handovers", async (req, res) => {
   const organisationId = organisationScope(req);
   const body = z.object({ employeeId: z.string().min(1, "Please Select Employee."), amount: z.coerce.number().int().min(1, "Please Enter Handover Amount."), fromDate: z.coerce.date(), toDate: z.coerce.date(), note: z.string().optional() }).parse(req.body);
+  if (body.toDate < body.fromDate) return res.status(400).json({ message: "To Date Cannot Be Earlier Than From Date." });
   const handover = await prisma.employeeHandover.create({ data: { ...body, organisationId } });
   res.status(201).json(handover);
 });
