@@ -13,6 +13,7 @@ export function EditableRow({
   title,
   meta,
   badge,
+  editMeta,
   initial,
   fields,
   path,
@@ -22,6 +23,7 @@ export function EditableRow({
   title: string;
   meta: string;
   badge: string;
+  editMeta?: React.ReactNode;
   initial: Record<string, string>;
   fields: EditableField[];
   path: string;
@@ -65,6 +67,7 @@ export function EditableRow({
   if (editing) {
     return (
       <form className="edit-row" onSubmit={submit}>
+        {editMeta && <div className="edit-row-meta">{editMeta}</div>}
         {fields.map((field) => (
           <label key={field.key}>
             {t(field.label)}

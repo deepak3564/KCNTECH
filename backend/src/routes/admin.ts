@@ -164,6 +164,32 @@ adminRouter.get("/set-top-boxes", async (req, res) => {
   }));
 });
 
+adminRouter.get("/deleted-set-top-boxes", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const boxes = await prisma.setTopBox.findMany({
+    where: { organisationId, deleted: true },
+    include: {
+      assignments: {
+        orderBy: { assignedAt: "desc" },
+        include: {
+          customer: {
+            select: {
+              id: true,
+              customerCode: true,
+              firstName: true,
+              lastName: true,
+              address: true,
+              deleted: true
+            }
+          }
+        }
+      }
+    },
+    orderBy: { boxNumber: "asc" }
+  });
+  res.json(boxes);
+});
+
 adminRouter.post("/set-top-boxes/:id/unlink", async (req, res) => {
   const organisationId = organisationScope(req);
   const box = await prisma.setTopBox.findFirst({ where: { id: req.params.id, organisationId, deleted: false } });
@@ -411,6 +437,37 @@ adminRouter.delete("/customers/:id", async (req, res) => {
     comment: "Customer deleted"
   });
   res.json({ message: "Customer Deleted." });
+});
+
+adminRouter.get("/deleted-customers", async (req, res) => {
+  const organisationId = organisationScope(req);
+  const customers = await prisma.customer.findMany({
+    where: { organisationId, deleted: true },
+    select: {
+      id: true,
+      customerCode: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      address: true,
+      status: true,
+      cableStatus: true,
+      internetStatus: true,
+      updatedAt: true,
+      collector: { select: { id: true, name: true } },
+      boxes: {
+        orderBy: { assignedAt: "desc" },
+        select: {
+          assignedAt: true,
+          unassignedAt: true,
+          reason: true,
+          setTopBox: { select: { boxNumber: true, pairedCardNumber: true } }
+        }
+      }
+    },
+    orderBy: { updatedAt: "desc" }
+  });
+  res.json(customers);
 });
 
 adminRouter.post("/customers/:id/set-top-boxes", async (req, res) => {

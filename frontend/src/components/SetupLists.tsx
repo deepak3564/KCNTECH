@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronUp } from "lucide-react";
+import { ChevronDown, ChevronUp, Search } from "lucide-react";
 import { api, money } from "../api/client";
 import { useI18n } from "../i18n";
 import { Box, Employee, Plan } from "../types";
@@ -38,9 +38,18 @@ export function SetupListTabs({ plans, employees, boxes, reload }: { plans: Plan
 
 export function EmployeeList({ employees, reload, defaultOpen = false }: { employees: Employee[]; reload: () => void; defaultOpen?: boolean }) {
   const { t } = useI18n();
+  const [query, setQuery] = useState("");
+  const filteredEmployees = employees.filter((employee) => matchesSearch(query, employee.name, employee.email, employee.phone, employee.isActive ? "active" : "inactive"));
   return (
-    <MasterList title={`${t("Employees")} (${employees.length})`} empty="No Employees Added Yet." defaultOpen={defaultOpen}>
-      {employees.map((employee) => (
+    <MasterList
+      title={listTitle(t("Employees"), filteredEmployees.length, employees.length)}
+      empty="No Employees Added Yet."
+      defaultOpen={defaultOpen}
+      searchValue={query}
+      searchPlaceholder={`${t("Search")} ${t("Employees")}`}
+      onSearchChange={setQuery}
+    >
+      {filteredEmployees.map((employee) => (
         <EditableRow
           key={employee.id}
           title={employee.name}
@@ -65,9 +74,18 @@ export function EmployeeList({ employees, reload, defaultOpen = false }: { emplo
 
 export function PlanList({ plans, reload, defaultOpen = false }: { plans: Plan[]; reload: () => void; defaultOpen?: boolean }) {
   const { t } = useI18n();
+  const [query, setQuery] = useState("");
+  const filteredPlans = plans.filter((plan) => matchesSearch(query, plan.name, plan.type, String(plan.price), plan.isActive === false ? "inactive" : "active"));
   return (
-    <MasterList title={`${t("Plans")} (${plans.length})`} empty="No Plans Added Yet." defaultOpen={defaultOpen}>
-      {plans.map((plan) => (
+    <MasterList
+      title={listTitle(t("Plans"), filteredPlans.length, plans.length)}
+      empty="No Plans Added Yet."
+      defaultOpen={defaultOpen}
+      searchValue={query}
+      searchPlaceholder={`${t("Search")} ${t("Plans")}`}
+      onSearchChange={setQuery}
+    >
+      {filteredPlans.map((plan) => (
         <EditableRow
           key={plan.id}
           title={plan.name}
@@ -91,14 +109,27 @@ export function PlanList({ plans, reload, defaultOpen = false }: { plans: Plan[]
 
 export function BoxList({ boxes, reload, defaultOpen = false }: { boxes: Box[]; reload: () => void; defaultOpen?: boolean }) {
   const { t } = useI18n();
+  const [query, setQuery] = useState("");
+  const filteredBoxes = boxes.filter((box) => {
+    const linkedCustomer = box.assignments?.[0]?.customer;
+    const linkedCustomerName = linkedCustomer ? `${linkedCustomer.firstName} ${linkedCustomer.lastName ?? ""}`.trim() : "";
+    return matchesSearch(query, box.boxNumber, box.pairedCardNumber, box.status, box.notes, linkedCustomerName);
+  });
   async function unlinkBox(box: Box) {
     if (!confirm(t("Are You Sure You Want To Unlink This Set Top Box?"))) return;
     await api(`/admin/set-top-boxes/${box.id}/unlink`, { method: "POST" });
     reload();
   }
   return (
-    <MasterList title={`${t("Set Top Boxes")} (${boxes.length})`} empty="No Set Top Boxes Added Yet." defaultOpen={defaultOpen}>
-      {boxes.map((box) => {
+    <MasterList
+      title={listTitle(t("Set Top Boxes"), filteredBoxes.length, boxes.length)}
+      empty="No Set Top Boxes Added Yet."
+      defaultOpen={defaultOpen}
+      searchValue={query}
+      searchPlaceholder={`${t("Search")} ${t("Set Top Boxes")}`}
+      onSearchChange={setQuery}
+    >
+      {filteredBoxes.map((box) => {
         const linkedCustomer = box.assignments?.[0]?.customer;
         const linkedCustomerName = linkedCustomer ? `${linkedCustomer.firstName} ${linkedCustomer.lastName ?? ""}`.trim() : "";
         return (
@@ -107,6 +138,7 @@ export function BoxList({ boxes, reload, defaultOpen = false }: { boxes: Box[]; 
               title={box.boxNumber}
               meta={`${t("Card")}: ${box.pairedCardNumber}${linkedCustomerName ? ` · ${t("Linked To")}: ${linkedCustomerName}` : ` · ${t("Not Linked")}`}`}
               badge={box.status ?? "STB"}
+              editMeta={<><strong>{t("Linked To")}</strong><span>{linkedCustomerName || t("Not Linked")}</span></>}
               initial={{ boxNumber: box.boxNumber, pairedCardNumber: box.pairedCardNumber, status: box.status ?? "ACTIVE", notes: box.notes ?? "" }}
               fields={[
                 { key: "boxNumber", label: "STB number" },
@@ -126,7 +158,23 @@ export function BoxList({ boxes, reload, defaultOpen = false }: { boxes: Box[]; 
   );
 }
 
-function MasterList({ title, empty, defaultOpen = false, children }: { title: string; empty: string; defaultOpen?: boolean; children: React.ReactNode }) {
+function MasterList({
+  title,
+  empty,
+  defaultOpen = false,
+  children,
+  searchValue,
+  searchPlaceholder,
+  onSearchChange
+}: {
+  title: string;
+  empty: string;
+  defaultOpen?: boolean;
+  children: React.ReactNode;
+  searchValue?: string;
+  searchPlaceholder?: string;
+  onSearchChange?: (value: string) => void;
+}) {
   const [open, setOpen] = useState(defaultOpen);
   const hasRows = React.Children.count(children) > 0;
   const { t } = useI18n();
@@ -138,10 +186,30 @@ function MasterList({ title, empty, defaultOpen = false, children }: { title: st
       </button>
       <div className={`master-content ${open ? "open" : ""}`}>
         <div className="master-content-inner">
+          {onSearchChange && (
+            <label className="master-search">
+              <Search size={15} />
+              <input value={searchValue ?? ""} placeholder={searchPlaceholder ?? t("Search")} onChange={(event) => onSearchChange(event.target.value)} />
+            </label>
+          )}
           {!hasRows && <p className="empty">{t(empty)}</p>}
           {children}
         </div>
       </div>
     </section>
   );
+}
+
+function listTitle(label: string, visibleCount: number, totalCount: number) {
+  return visibleCount === totalCount ? `${label} (${totalCount})` : `${label} (${visibleCount}/${totalCount})`;
+}
+
+function matchesSearch(query: string, ...values: Array<string | number | boolean | null | undefined>) {
+  const search = normalizeListSearch(query);
+  if (!search) return true;
+  return values.some((value) => normalizeListSearch(value).includes(search));
+}
+
+function normalizeListSearch(value: string | number | boolean | null | undefined) {
+  return String(value ?? "").trim().toLowerCase();
 }

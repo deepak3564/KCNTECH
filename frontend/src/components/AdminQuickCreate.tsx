@@ -9,18 +9,36 @@ import { SetTopBoxSearchSelect } from "./SetTopBoxSearchSelect";
 export function AdminQuickCreate({ plans, employees, boxes, month, year, internetEnabled, reload }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; internetEnabled: boolean; reload: () => void }) {
   const [open, setOpen] = useState<"customer" | "employee" | "plan" | "box" | null>(null);
   const { t } = useI18n();
-  return (
-    <section className="admin-panel">
-      <div className="quick-actions">
-        <button className={open === "customer" ? "active-action" : ""} onClick={() => setOpen("customer")}><Plus size={16} /> {t("Customer")}</button>
-        <button className={open === "employee" ? "active-action" : ""} onClick={() => setOpen("employee")}><UserPlus size={16} /> {t("Employee")}</button>
-        <button className={open === "plan" ? "active-action" : ""} onClick={() => setOpen("plan")}><Cable size={16} /> {t("Plan")}</button>
-        <button className={open === "box" ? "active-action" : ""} onClick={() => setOpen("box")}><CreditCard size={16} /> STB</button>
-      </div>
+  const renderActiveForm = () => (
+    <>
       {open === "customer" && <CustomerForm plans={plans} employees={employees} boxes={boxes} month={month} year={year} internetEnabled={internetEnabled} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "employee" && <SimpleCreate path="/admin/employees" fields={["name", "email", "phone", "password"]} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "plan" && <SimpleCreate path="/admin/plans" fields={["name", "type", "price"]} defaults={{ type: "CABLE" }} internetEnabled={internetEnabled} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
       {open === "box" && <SimpleCreate path="/admin/set-top-boxes" fields={["boxNumber", "pairedCardNumber", "notes"]} onCancel={() => setOpen(null)} done={() => { setOpen(null); reload(); }} />}
+    </>
+  );
+  const toggleOpen = (next: typeof open) => setOpen((current) => current === next ? null : next);
+  const actionItems: Array<{ key: NonNullable<typeof open>; label: string; icon: React.ReactNode }> = [
+    { key: "customer", label: t("Customer"), icon: <Plus size={16} /> },
+    { key: "employee", label: t("Employee"), icon: <UserPlus size={16} /> },
+    { key: "plan", label: t("Plan"), icon: <Cable size={16} /> },
+    { key: "box", label: "STB", icon: <CreditCard size={16} /> }
+  ];
+  return (
+    <section className="admin-panel">
+      <div className="quick-actions">
+        {actionItems.map((item) => (
+          <div className="quick-action-item" key={item.key}>
+            <button className={open === item.key ? "active-action" : ""} onClick={() => toggleOpen(item.key)}>{item.icon} {item.label}</button>
+            <div className={`quick-create-mobile-panel ${open === item.key ? "open" : ""}`}>
+              {open === item.key && renderActiveForm()}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className={`quick-create-panel ${open ? "open" : ""}`}>
+        {open && renderActiveForm()}
+      </div>
     </section>
   );
 }
@@ -69,7 +87,7 @@ function SimpleCreate({ path, fields, defaults = {}, internetEnabled = true, onC
         ))}
       </div>
       <div className="add-form-actions">
-        <button className="primary">{t("Save")}</button>
+        <button className="primary save-button">{t("Save")}</button>
         <button type="button" onClick={onCancel}>{t("Cancel")}</button>
       </div>
       {error && <p className="error inline-error">{t(error)}</p>}
@@ -128,7 +146,7 @@ function CustomerForm({ plans, employees, boxes, month, year, internetEnabled, o
         {!values.setTopBoxId && <label>{t("New Paired Card Number")}<input value={values.newPairedCardNumber ?? ""} onChange={(e) => set("newPairedCardNumber", e.target.value)} /></label>}
       </div>
       <div className="add-form-actions">
-        <button className="primary">{t("Save Customer")}</button>
+        <button className="primary save-button">{t("Save")}</button>
         <button type="button" onClick={onCancel}>{t("Cancel")}</button>
       </div>
     </form>

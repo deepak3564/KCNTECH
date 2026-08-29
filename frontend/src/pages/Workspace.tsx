@@ -6,6 +6,8 @@ import { AdminQuickCreate } from "../components/AdminQuickCreate";
 import { CustomerCard } from "../components/CustomerCard";
 import { CustomerDrawer } from "../components/CustomerDrawer";
 import { DashboardCards } from "../components/DashboardCards";
+import { DeletedCustomers } from "../components/DeletedCustomers";
+import { DeletedSetTopBoxes } from "../components/DeletedSetTopBoxes";
 import { EmployeeLedger } from "../components/EmployeeLedger";
 import { EmployeeCollectionSummary } from "../components/EmployeeCollectionSummary";
 import { PaymentHistoryReport } from "../components/PaymentHistoryReport";
@@ -185,7 +187,9 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
     lists: <div className="profile-tool-panel full-list-panel"><SetupListTabs employees={employees} plans={visiblePlans} boxes={boxes} reload={load} /></div>,
     ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>,
     collectionSummary: <div className="profile-tool-panel"><EmployeeCollectionSummary /></div>,
-    payments: <div className="profile-tool-panel"><PaymentHistoryReport employees={employees} organisationName={user.organisationName} /></div>
+    payments: <div className="profile-tool-panel"><PaymentHistoryReport employees={employees} organisationName={user.organisationName} /></div>,
+    deletedCustomers: <div className="profile-tool-panel"><DeletedCustomers internetEnabled={user.internetEnabled} /></div>,
+    deletedSetTopBoxes: <div className="profile-tool-panel"><DeletedSetTopBoxes /></div>
   } : {
     ledger: <div className="profile-tool-panel"><EmployeeLedger user={user} employees={employees} /></div>
   };
@@ -251,7 +255,10 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
             <option value="customerIdDesc">{t("Customer ID High To Low")}</option>
           </select>
           <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-            <option value="">{t("All Payment")}</option><option value="PENDING">{t("Pending")}</option><option value="PARTIAL">{t("Partial")}</option><option value="PAID">{t("Paid")}</option>
+            <option value="">{paymentStatusLabel(t("All Payment"), dashboard ? dashboard.pendingBills + dashboard.partialBills + dashboard.paidBills : 0)}</option>
+            <option value="PENDING">{paymentStatusLabel(t("Pending"), dashboard?.pendingBills)}</option>
+            <option value="PARTIAL">{paymentStatusLabel(t("Partial"), dashboard?.partialBills)}</option>
+            <option value="PAID">{paymentStatusLabel(t("Paid"), dashboard?.paidBills)}</option>
           </select>
           <button onClick={load}><Search size={16} /> {t("Search")}</button>
         </section>
@@ -341,6 +348,10 @@ function yearOptions(value?: string) {
   const selectedYear = Number(value);
   if (Number.isInteger(selectedYear) && selectedYear > 1900) years.add(selectedYear);
   return Array.from(years).sort((a, b) => a - b);
+}
+
+function paymentStatusLabel(label: string, count?: number) {
+  return `${label} (${count ?? 0})`;
 }
 
 function normalizeSearch(value?: string | null) {

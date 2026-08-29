@@ -9,6 +9,8 @@ export type ProfileToolTabs = {
   ledger?: React.ReactNode;
   collectionSummary?: React.ReactNode;
   payments?: React.ReactNode;
+  deletedCustomers?: React.ReactNode;
+  deletedSetTopBoxes?: React.ReactNode;
 };
 
 export function Shell({

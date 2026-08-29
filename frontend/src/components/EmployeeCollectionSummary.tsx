@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { BarChart3 } from "lucide-react";
 import { api, money } from "../api/client";
 import { useI18n } from "../i18n";
 
@@ -49,7 +48,7 @@ export function EmployeeCollectionSummary() {
 
   return (
     <section className="admin-panel collection-summary-panel">
-      <h2><BarChart3 size={20} /> {t("Employee Collection Summary")}</h2>
+      <h2>{t("Employee Collection Summary")}</h2>
       <div className="ledger-row">
         <label>{t("Month")}<select value={month} onChange={(event) => setMonth(Number(event.target.value))}>{Array.from({ length: 12 }, (_, index) => <option key={index + 1} value={index + 1}>{new Date(2024, index).toLocaleString("en", { month: "short" })}</option>)}</select></label>
         <label>{t("Year")}<select value={year} onChange={(event) => setYear(Number(event.target.value))}>{yearOptions(String(year)).map((item) => <option key={item} value={item}>{item}</option>)}</select></label>

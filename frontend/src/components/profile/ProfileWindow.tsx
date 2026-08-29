@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { SessionUser } from "../../api/client";
 import type { ProfileToolTabs } from "../Shell";
@@ -11,7 +11,8 @@ import { MailNotificationTab } from "./tabs/MailNotificationTab";
 import { ThemeTab } from "./tabs/ThemeTab";
 import { useI18n } from "../../i18n";
 
-type ProfileTab = "about" | "add" | "lists" | "ledger" | "collectionSummary" | "payments" | "internet" | "mail" | "password" | "language" | "theme" | "logout";
+type ProfileTab = "about" | "add" | "lists" | "ledger" | "collectionSummary" | "payments" | "deletedCustomers" | "deletedSetTopBoxes" | "internet" | "mail" | "password" | "language" | "theme" | "logout";
+type ActiveProfileTab = ProfileTab | "";
 
 export function ProfileWindow({
   user,
@@ -26,8 +27,34 @@ export function ProfileWindow({
   onClose: () => void;
   profileTools?: ProfileToolTabs;
 }) {
-  const [tab, setTab] = useState<ProfileTab>("about");
+  const [tab, setTab] = useState<ActiveProfileTab>("about");
+  const [isMobileProfile, setIsMobileProfile] = useState(false);
   const { t } = useI18n();
+  const tabContent = tab ? renderProfileTab(tab, { user, onUserChange, onLogout, profileTools }) : null;
+  const tabButtons: Array<{ key: ProfileTab; label: string; visible: boolean }> = [
+    { key: "about", label: t("About"), visible: true },
+    { key: "add", label: t("Add"), visible: Boolean(profileTools?.add) },
+    { key: "lists", label: t("Lists"), visible: Boolean(profileTools?.lists) },
+    { key: "ledger", label: t("Employee Ledger"), visible: Boolean(profileTools?.ledger) },
+    { key: "collectionSummary", label: t("Employee Collection Summary"), visible: Boolean(profileTools?.collectionSummary) },
+    { key: "payments", label: t("Payment History"), visible: Boolean(profileTools?.payments) },
+    { key: "deletedCustomers", label: t("Deleted Customers"), visible: Boolean(profileTools?.deletedCustomers) },
+    { key: "deletedSetTopBoxes", label: t("Deleted STB"), visible: Boolean(profileTools?.deletedSetTopBoxes) },
+    { key: "internet", label: t("Internet Settings"), visible: user.role === "ADMIN" },
+    { key: "mail", label: t("Mail Notification"), visible: user.role === "ADMIN" },
+    { key: "password", label: t("Change Password"), visible: true },
+    { key: "language", label: t("Language"), visible: true },
+    { key: "theme", label: t("Theme"), visible: true },
+    { key: "logout", label: t("Logout"), visible: true }
+  ];
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsMobileProfile(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
 
   return (
     <div className="profile-backdrop" role="dialog" aria-modal="true">
@@ -41,35 +68,50 @@ export function ProfileWindow({
         </header>
         <div className="profile-body">
           <nav className="profile-nav">
-            <button className={tab === "about" ? "active-tab" : ""} onClick={() => setTab("about")}>{t("About")}</button>
-            {profileTools?.add && <button className={tab === "add" ? "active-tab" : ""} onClick={() => setTab("add")}>{t("Add")}</button>}
-            {profileTools?.lists && <button className={tab === "lists" ? "active-tab" : ""} onClick={() => setTab("lists")}>{t("Lists")}</button>}
-            {profileTools?.ledger && <button className={tab === "ledger" ? "active-tab" : ""} onClick={() => setTab("ledger")}>{t("Employee Ledger")}</button>}
-            {profileTools?.collectionSummary && <button className={tab === "collectionSummary" ? "active-tab" : ""} onClick={() => setTab("collectionSummary")}>{t("Employee Collection Summary")}</button>}
-            {profileTools?.payments && <button className={tab === "payments" ? "active-tab" : ""} onClick={() => setTab("payments")}>{t("Payment History")}</button>}
-            {user.role === "ADMIN" && <button className={tab === "internet" ? "active-tab" : ""} onClick={() => setTab("internet")}>{t("Internet Settings")}</button>}
-            {user.role === "ADMIN" && <button className={tab === "mail" ? "active-tab" : ""} onClick={() => setTab("mail")}>{t("Mail Notification")}</button>}
-            <button className={tab === "password" ? "active-tab" : ""} onClick={() => setTab("password")}>{t("Change Password")}</button>
-            <button className={tab === "language" ? "active-tab" : ""} onClick={() => setTab("language")}>{t("Language")}</button>
-            <button className={tab === "theme" ? "active-tab" : ""} onClick={() => setTab("theme")}>{t("Theme")}</button>
-            <button className={tab === "logout" ? "active-tab" : ""} onClick={() => setTab("logout")}>{t("Logout")}</button>
+            {tabButtons.filter((item) => item.visible).map((item) => (
+              <div className="profile-nav-item" key={item.key}>
+                <button className={tab === item.key ? "active-tab" : ""} data-profile-tab={item.key} onClick={() => setTab((current) => current === item.key ? "" : item.key)}>{item.label}</button>
+                {isMobileProfile && (
+                  <div className={`profile-mobile-content ${tab === item.key ? "open" : ""}`}>
+                    {tab === item.key && tabContent}
+                  </div>
+                )}
+              </div>
+            ))}
           </nav>
-          <div className="profile-content">
-            {tab === "about" && <AboutTab user={user} />}
-            {tab === "add" && profileTools?.add}
-            {tab === "lists" && profileTools?.lists}
-            {tab === "ledger" && profileTools?.ledger}
-            {tab === "collectionSummary" && profileTools?.collectionSummary}
-            {tab === "payments" && profileTools?.payments}
-            {tab === "internet" && <InternetSettingsTab user={user} onUserChange={onUserChange} />}
-            {tab === "mail" && <MailNotificationTab />}
-            {tab === "password" && <ChangePasswordTab user={user} onUserChange={onUserChange} />}
-            {tab === "language" && <LanguageTab user={user} onUserChange={onUserChange} />}
-            {tab === "theme" && <ThemeTab user={user} onUserChange={onUserChange} />}
-            {tab === "logout" && <LogoutTab onLogout={onLogout} />}
-          </div>
+          {!isMobileProfile && tabContent && <div className="profile-content">{tabContent}</div>}
         </div>
       </section>
     </div>
   );
+}
+
+function renderProfileTab(
+  tab: ProfileTab,
+  {
+    user,
+    onUserChange,
+    onLogout,
+    profileTools
+  }: {
+    user: SessionUser;
+    onUserChange: (user: SessionUser) => void;
+    onLogout: () => void;
+    profileTools?: ProfileToolTabs;
+  }
+): ReactNode {
+  if (tab === "about") return <AboutTab user={user} />;
+  if (tab === "add") return profileTools?.add;
+  if (tab === "lists") return profileTools?.lists;
+  if (tab === "ledger") return profileTools?.ledger;
+  if (tab === "collectionSummary") return profileTools?.collectionSummary;
+  if (tab === "payments") return profileTools?.payments;
+  if (tab === "deletedCustomers") return profileTools?.deletedCustomers;
+  if (tab === "deletedSetTopBoxes") return profileTools?.deletedSetTopBoxes;
+  if (tab === "internet") return <InternetSettingsTab user={user} onUserChange={onUserChange} />;
+  if (tab === "mail") return <MailNotificationTab />;
+  if (tab === "password") return <ChangePasswordTab user={user} onUserChange={onUserChange} />;
+  if (tab === "language") return <LanguageTab user={user} onUserChange={onUserChange} />;
+  if (tab === "theme") return <ThemeTab user={user} onUserChange={onUserChange} />;
+  return <LogoutTab onLogout={onLogout} />;
 }
