@@ -75,7 +75,7 @@ export function EditableRow({
           </label>
         ))}
         <div className="edit-actions">
-          <button className="primary">{t("Save")}</button>
+          <button className="primary save-button" type="submit">{t("Save")}</button>
           <button type="button" onClick={() => { setValues(initial); setEditing(false); }}><X size={16} /> {t("Cancel")}</button>
         </div>
         {error && <p className="error inline-error">{t(error)}</p>}

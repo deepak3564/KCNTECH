@@ -99,7 +99,7 @@ export function EmployeeLedger({ user, employees }: { user: SessionUser; employe
       {user.role === "ADMIN" && <form className="ledger-row" onSubmit={saveHandover}>
         <label>{t("Received Amount")}<input value={handoverAmount} onChange={(e) => setHandoverAmount(e.target.value)} /></label>
         <label>{t("Comment")}<input value={handoverNote} onChange={(e) => setHandoverNote(e.target.value)} /></label>
-        <button className="primary">{t("Record Handover")}</button>
+        <button className="primary save-button">{t("Record Handover")}</button>
       </form>}
       {user.role === "ADMIN" && (
         <section className="handover-history-panel">

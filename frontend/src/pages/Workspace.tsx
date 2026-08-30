@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { ReceiptIndianRupee, Search } from "lucide-react";
+import { ChevronDown, ReceiptIndianRupee, Search } from "lucide-react";
 import { api, SessionUser } from "../api/client";
 import { Box, Customer, Dashboard, Employee, Plan } from "../types";
 import { AdminQuickCreate } from "../components/AdminQuickCreate";
 import { CustomerCard } from "../components/CustomerCard";
 import { CustomerDrawer } from "../components/CustomerDrawer";
+import { CustomerGrid } from "../components/CustomerGrid";
 import { DashboardCards } from "../components/DashboardCards";
 import { DeletedCustomers } from "../components/DeletedCustomers";
 import { DeletedSetTopBoxes } from "../components/DeletedSetTopBoxes";
@@ -34,7 +35,9 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
   const [addressSuggestions, setAddressSuggestions] = useState<string[]>([]);
   const [addressOpen, setAddressOpen] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState("");
+  const [paymentFilterOpen, setPaymentFilterOpen] = useState(false);
   const [sortMode, setSortMode] = useState<"recent" | "customerIdAsc" | "customerIdDesc" | "nameAsc" | "nameDesc">("recent");
+  const [viewMode, setViewMode] = useState<"card" | "grid">("card");
   const [billingMessage, setBillingMessage] = useState("");
   const [generatingBills, setGeneratingBills] = useState(false);
   const searchRequestId = useRef(0);
@@ -254,17 +257,29 @@ export function Workspace({ user, onLogout, onUserChange }: { user: SessionUser;
             <option value="customerIdAsc">{t("Customer ID Low To High")}</option>
             <option value="customerIdDesc">{t("Customer ID High To Low")}</option>
           </select>
-          <select value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
-            <option value="">{paymentStatusLabel(t("All Payment"), dashboard ? dashboard.pendingBills + dashboard.partialBills + dashboard.paidBills : 0)}</option>
-            <option value="PENDING">{paymentStatusLabel(t("Pending"), dashboard?.pendingBills)}</option>
-            <option value="PARTIAL">{paymentStatusLabel(t("Partial"), dashboard?.partialBills)}</option>
-            <option value="PAID">{paymentStatusLabel(t("Paid"), dashboard?.paidBills)}</option>
-          </select>
+          <PaymentStatusSelect
+            dashboard={dashboard}
+            open={paymentFilterOpen}
+            value={paymentStatus}
+            t={t}
+            onOpenChange={setPaymentFilterOpen}
+            onChange={setPaymentStatus}
+          />
           <button onClick={load}><Search size={16} /> {t("Search")}</button>
         </section>
-        <section className="customer-list">
-          {sortCustomers(customers, sortMode).map((customer) => <CustomerCard key={customer.id} customer={customer} internetEnabled={user.internetEnabled} onOpen={() => openCustomer(customer)} />)}
+        <section className="view-toggle-row" aria-label={t("Customer View")}>
+          <div className="segmented-control">
+            <button className={viewMode === "card" ? "active" : ""} type="button" onClick={() => setViewMode("card")}>{t("Card View")}</button>
+            <button className={viewMode === "grid" ? "active" : ""} type="button" onClick={() => setViewMode("grid")}>{t("Grid View")}</button>
+          </div>
         </section>
+        {viewMode === "card" ? (
+          <section className="customer-list">
+            {sortCustomers(customers, sortMode).map((customer) => <CustomerCard key={customer.id} customer={customer} internetEnabled={user.internetEnabled} onOpen={() => openCustomer(customer)} />)}
+          </section>
+        ) : (
+          <CustomerGrid customers={sortCustomers(customers, sortMode)} internetEnabled={user.internetEnabled} onOpen={openCustomer} />
+        )}
       </main>
       {selected && <CustomerDrawer customer={selected} user={user} plans={visiblePlans} employees={collectors} boxes={boxes} month={month} year={year} internetEnabled={user.internetEnabled} onClose={() => setSelected(null)} onRefresh={load} />}
     </Shell>
@@ -350,8 +365,61 @@ function yearOptions(value?: string) {
   return Array.from(years).sort((a, b) => a - b);
 }
 
-function paymentStatusLabel(label: string, count?: number) {
-  return `${label} (${count ?? 0})`;
+function PaymentStatusSelect({
+  dashboard,
+  open,
+  value,
+  t,
+  onOpenChange,
+  onChange
+}: {
+  dashboard: Dashboard | null;
+  open: boolean;
+  value: string;
+  t: (text: string) => string;
+  onOpenChange: (open: boolean) => void;
+  onChange: (value: string) => void;
+}) {
+  const options = paymentFilterOptions(dashboard, t);
+  const selected = options.find((option) => option.value === value) ?? options[0];
+  return (
+    <div className="payment-select" onBlur={() => window.setTimeout(() => onOpenChange(false), 120)}>
+      <button className="payment-select-trigger" type="button" onClick={() => onOpenChange(!open)}>
+        <span>{selected.label}</span>
+        <strong className={`payment-select-count ${selected.className}`}>{selected.count}</strong>
+        <ChevronDown size={15} />
+      </button>
+      {open && (
+        <div className="payment-select-menu">
+          {options.map((option) => (
+            <button
+              className={value === option.value ? "active-option" : ""}
+              key={option.value || "all"}
+              type="button"
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => {
+                onChange(option.value);
+                onOpenChange(false);
+              }}
+            >
+              <span>{option.label}</span>
+              <strong className={`payment-select-count ${option.className}`}>{option.count}</strong>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function paymentFilterOptions(dashboard: Dashboard | null, t: (text: string) => string) {
+  const total = dashboard ? dashboard.pendingBills + dashboard.partialBills + dashboard.paidBills : 0;
+  return [
+    { value: "", label: t("All Payment"), count: total, className: "all" },
+    { value: "PENDING", label: t("Pending"), count: dashboard?.pendingBills ?? 0, className: "pending" },
+    { value: "PARTIAL", label: t("Partial"), count: dashboard?.partialBills ?? 0, className: "partial" },
+    { value: "PAID", label: t("Paid"), count: dashboard?.paidBills ?? 0, className: "paid" }
+  ];
 }
 
 function normalizeSearch(value?: string | null) {

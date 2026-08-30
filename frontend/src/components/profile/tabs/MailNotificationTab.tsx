@@ -37,7 +37,7 @@ export function MailNotificationTab() {
           {t("Payment Alert Email")}
           <input type="email" value={notificationEmail} onChange={(event) => setNotificationEmail(event.target.value)} placeholder="admin@example.com" />
         </label>
-        <button className="primary">{t("Save Mail Notification")}</button>
+        <button className="primary save-button">{t("Save Mail Notification")}</button>
       </form>
       {message && <p className="success">{t(message)}</p>}
       {error && <p className="error">{t(error)}</p>}

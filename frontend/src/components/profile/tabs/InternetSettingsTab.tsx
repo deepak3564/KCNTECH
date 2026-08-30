@@ -39,7 +39,7 @@ export function InternetSettingsTab({ user, onUserChange }: { user: SessionUser;
           <input type="checkbox" checked={internetEnabled} onChange={(event) => setInternetEnabled(event.target.checked)} />
           <span>{t("Enable Internet System")}</span>
         </label>
-        <button className="primary">{t("Save Internet Settings")}</button>
+        <button className="primary save-button">{t("Save Internet Settings")}</button>
       </form>
       {message && <p className="success">{t(message)}</p>}
       {error && <p className="error">{t(error)}</p>}

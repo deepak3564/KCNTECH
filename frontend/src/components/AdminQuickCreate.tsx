@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Cable, CreditCard, Plus, UserPlus } from "lucide-react";
 import { api } from "../api/client";
 import { useI18n } from "../i18n";
@@ -8,6 +8,7 @@ import { SetTopBoxSearchSelect } from "./SetTopBoxSearchSelect";
 
 export function AdminQuickCreate({ plans, employees, boxes, month, year, internetEnabled, reload }: { plans: Plan[]; employees: Employee[]; boxes: Box[]; month: number; year: number; internetEnabled: boolean; reload: () => void }) {
   const [open, setOpen] = useState<"customer" | "employee" | "plan" | "box" | null>(null);
+  const [isMobileCreate, setIsMobileCreate] = useState(() => typeof window !== "undefined" && window.matchMedia("(max-width: 760px)").matches);
   const { t } = useI18n();
   const renderActiveForm = () => (
     <>
@@ -24,21 +25,34 @@ export function AdminQuickCreate({ plans, employees, boxes, month, year, interne
     { key: "plan", label: t("Plan"), icon: <Cable size={16} /> },
     { key: "box", label: "STB", icon: <CreditCard size={16} /> }
   ];
+
+  useEffect(() => {
+    const query = window.matchMedia("(max-width: 760px)");
+    const update = () => setIsMobileCreate(query.matches);
+    update();
+    query.addEventListener("change", update);
+    return () => query.removeEventListener("change", update);
+  }, []);
+
   return (
     <section className="admin-panel">
       <div className="quick-actions">
         {actionItems.map((item) => (
           <div className="quick-action-item" key={item.key}>
             <button className={open === item.key ? "active-action" : ""} onClick={() => toggleOpen(item.key)}>{item.icon} {item.label}</button>
-            <div className={`quick-create-mobile-panel ${open === item.key ? "open" : ""}`}>
-              {open === item.key && renderActiveForm()}
-            </div>
+            {isMobileCreate && (
+              <div className={`quick-create-mobile-panel ${open === item.key ? "open" : ""}`}>
+                {open === item.key && renderActiveForm()}
+              </div>
+            )}
           </div>
         ))}
       </div>
-      <div className={`quick-create-panel ${open ? "open" : ""}`}>
-        {open && renderActiveForm()}
-      </div>
+      {!isMobileCreate && (
+        <div className={`quick-create-panel ${open ? "open" : ""}`}>
+          {open && renderActiveForm()}
+        </div>
+      )}
     </section>
   );
 }
@@ -108,12 +122,18 @@ function CustomerForm({ plans, employees, boxes, month, year, internetEnabled, o
     internetStartMonth: String(month),
     internetStartYear: String(year)
   });
+  const [error, setError] = useState("");
   const { t } = useI18n();
   const set = (key: string, value: string) => setValues({ ...values, [key]: value });
   async function submit(event: React.FormEvent) {
     event.preventDefault();
-    await api("/admin/customers", { method: "POST", body: JSON.stringify(cleanServiceStarts({ ...values, effectiveMonth: String(month), effectiveYear: String(year) })) });
-    done();
+    setError("");
+    try {
+      await api("/admin/customers", { method: "POST", body: JSON.stringify(cleanServiceStarts({ ...values, effectiveMonth: String(month), effectiveYear: String(year) })) });
+      done();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Something Went Wrong. Please Check The Details And Try Again.");
+    }
   }
   return (
     <form className="add-form" onSubmit={submit}>
@@ -146,9 +166,10 @@ function CustomerForm({ plans, employees, boxes, month, year, internetEnabled, o
         {!values.setTopBoxId && <label>{t("New Paired Card Number")}<input value={values.newPairedCardNumber ?? ""} onChange={(e) => set("newPairedCardNumber", e.target.value)} /></label>}
       </div>
       <div className="add-form-actions">
-        <button className="primary save-button">{t("Save")}</button>
+        <button className="primary save-button" type="submit">{t("Save")}</button>
         <button type="button" onClick={onCancel}>{t("Cancel")}</button>
       </div>
+      {error && <p className="error inline-error">{t(error)}</p>}
     </form>
   );
 }

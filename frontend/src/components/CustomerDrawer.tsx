@@ -543,7 +543,7 @@ function AdminCustomerActions({
           {internetEnabled && values.internetStatus !== "NA" && <YearInput label={t("Internet Start Year")} value={values.internetStartYear} onChange={(value) => setValues({ ...values, internetStartYear: value })} />}
           <label className="full-field">{t("Notes")}<input value={values.notes} onChange={(e) => setValues({ ...values, notes: e.target.value })} /></label>
           <div className="edit-actions customer-edit-action-row full-field">
-            <button className="primary">{t("Save")}</button>
+            <button className="primary save-button">{t("Save")}</button>
             <button type="button" onClick={() => setActiveAdminAction(null)}>{t("Cancel")}</button>
             <button type="button" className="delete-button" onClick={deleteCustomer}>{t("Delete")}</button>
           </div>

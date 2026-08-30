@@ -32,7 +32,7 @@ export function ChangePasswordTab({ user, onUserChange }: { user: SessionUser; o
       <form className="stack" onSubmit={submit}>
         <label>{t("Current Password")}<input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} /></label>
         <label>{t("New Password")}<input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} /></label>
-        <button className="primary">{t("Update Password")}</button>
+        <button className="primary save-button">{t("Update Password")}</button>
       </form>
       {message && <p className="success">{t(message)}</p>}
       {error && <p className="error">{t(error)}</p>}
